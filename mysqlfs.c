@@ -1,6 +1,7 @@
 /*
-  MySQL Filesystem
+  mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano
+  $Id: mysqlfs.c,v 1.2 2006/05/20 15:22:00 cuspy Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -16,6 +17,11 @@
 #include <libgen.h>
 #include <fuse.h>
 #include <mysql.h>
+
+#ifdef DEBUG
+#include <mcheck.h>
+#endif
+
 #include "query.h"
 
 static char *host = NULL;
@@ -451,9 +457,16 @@ static int mysqlfs_opt_proc(void *data, const char *arg, int key,
     return 0;
 }
 
+/*
+ * main
+ */
 int main(int argc, char *argv[])
 {
     struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
+
+#ifdef DEBUG
+    mtrace();
+#endif
 
     fuse_opt_parse(&args, NULL, NULL, mysqlfs_opt_proc);
 
@@ -463,6 +476,11 @@ int main(int argc, char *argv[])
     }
 
     fuse_main(args.argc, args.argv, &mysqlfs_oper);
+    fuse_opt_free_args(&args);
+
+#ifdef DEBUG
+  muntrace();
+#endif
 
     return EXIT_SUCCESS;
 }

@@ -1,5 +1,6 @@
                       mysqlfs - MySQL FileSystem
-                                $Id: README,v 1.1 2006/05/20 14:28:46 cuspy Exp $
+
+$Id: README,v 1.2 2006/05/20 15:22:00 cuspy Exp $
 
 mysqlfs is linux filesystem which store file in mysql database.
 
