@@ -1,0 +1,15 @@
+DROP TABLE IF EXISTS fs;
+CREATE TABLE fs(
+	id INT AUTO_INCREMENT PRIMARY KEY,
+	path VARCHAR(255) UNIQUE,
+	mode INTEGER,
+	parent INTEGER,
+	atime TIMESTAMP,
+	mtime TIMESTAMP,
+	ctime TIMESTAMP,
+	data LONGBLOB,
+	INDEX(parent)
+);
+
+INSERT INTO fs(path, mode, parent) VALUES('/', 0x4000 | CONV('755', 8, 10), NULL);
+
