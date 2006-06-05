@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
-  Copyright (C) 2006 Tsukasa Hamano
-  $Id: query.h,v 1.2 2006/05/20 15:22:00 cuspy Exp $
+  Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
+  $Id: query.h,v 1.3 2006/06/05 18:43:38 cuspy Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.

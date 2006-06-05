@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
-  Copyright (C) 2006 Tsukasa Hamano
-  $Id: query.c,v 1.2 2006/05/20 15:22:00 cuspy Exp $
+  Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
+  $Id: query.c,v 1.3 2006/06/05 18:43:38 cuspy Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -23,7 +23,7 @@ int query_getattr(MYSQL *mysql, const char *path, struct stat *stbuf){
     char sql[SQL_SIZE];
     MYSQL_RES* result;
     MYSQL_ROW row;
-    char* path_esc;
+    char *path_esc;
 
     path_esc = (char*)malloc(strlen(path) * 2);
     if(!path_esc){
@@ -69,10 +69,10 @@ int query_getattr(MYSQL *mysql, const char *path, struct stat *stbuf){
     return 0;
 }
 
-int query_inode(MYSQL *mysql, const char* path){
+int query_inode(MYSQL *mysql, const char *path){
     int ret;
     char sql[SQL_SIZE];
-    char* path_esc;
+    char *path_esc;
     MYSQL_RES* result;
     MYSQL_ROW row;
 
@@ -120,7 +120,7 @@ int query_mknod(MYSQL *mysql, const char *path, mode_t mode, dev_t rdev,
 {
     int ret;
     char sql[SQL_SIZE];
-    char* path_esc;
+    char *path_esc;
     MYSQL_RES* result;
 
     path_esc = (char*)malloc(strlen(path) * 2);
@@ -151,10 +151,10 @@ int query_mknod(MYSQL *mysql, const char *path, mode_t mode, dev_t rdev,
     return ret;
 }
 
-int query_mkdir(MYSQL *mysql, const char* path, mode_t mode, int parent){
+int query_mkdir(MYSQL *mysql, const char *path, mode_t mode, int parent){
     int ret;
     char sql[SQL_SIZE];
-    char* path_esc;
+    char *path_esc;
     MYSQL_RES* result;
 
     path_esc = (char*)malloc(strlen(path) * 2);
@@ -217,10 +217,10 @@ int query_readdir(MYSQL *mysql, int inode, void *buf, fuse_fill_dir_t filler){
     return ret;
 }
 
-int query_delete(MYSQL *mysql, const char* path){
+int query_delete(MYSQL *mysql, const char *path){
     int ret;
     char sql[SQL_SIZE];
-    char* path_esc;
+    char *path_esc;
     MYSQL_RES* result;
 
     path_esc = (char*)malloc(strlen(path) * 2);
@@ -246,12 +246,12 @@ int query_delete(MYSQL *mysql, const char* path){
     return ret;
 }
 
-int query_read(MYSQL *mysql, const char *path, const char* buf, size_t size,
+int query_read(MYSQL *mysql, const char *path, const char *buf, size_t size,
                off_t offset)
 {
     int ret;
     char sql[SQL_SIZE];
-    char* path_esc;
+    char *path_esc;
     MYSQL_RES* result;
     MYSQL_ROW row;
     unsigned long length;
@@ -302,13 +302,13 @@ int query_read(MYSQL *mysql, const char *path, const char* buf, size_t size,
     return length;
 }
 
-int query_write(MYSQL *mysql, const char *path, const char* buf, size_t size,
+int query_write(MYSQL *mysql, const char *path, const char *buf, size_t size,
                 off_t offset)
 {
     int ret;
     char sql[SQL_SIZE];
-    char* path_esc;
-    char* data_esc;
+    char *path_esc;
+    char *data_esc;
 
     MYSQL_RES* result;
 
@@ -356,11 +356,11 @@ int query_write(MYSQL *mysql, const char *path, const char* buf, size_t size,
     return size;
 }
 
-off_t query_size(MYSQL *mysql, const char* path){
+off_t query_size(MYSQL *mysql, const char *path){
     off_t ret;
     char sql[SQL_SIZE];
-    char* path_esc;
-    MYSQL_RES* result;
+    char *path_esc;
+    MYSQL_RES *result;
     MYSQL_ROW row;
 
     path_esc = (char*)malloc(strlen(path) * 2);

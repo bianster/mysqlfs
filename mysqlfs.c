@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
-  Copyright (C) 2006 Tsukasa Hamano
-  $Id: mysqlfs.c,v 1.2 2006/05/20 15:22:00 cuspy Exp $
+  Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
+  $Id: mysqlfs.c,v 1.3 2006/06/05 18:43:38 cuspy Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -406,7 +406,7 @@ static struct fuse_operations mysqlfs_oper = {
 };
 
 void usage(){
-    fprintf(stderr, "usage: mysqlfs -hhost -uuser -ppasswd database.table ./mountpoint\n");
+    fprintf(stderr, "usage: mysqlfs -hhost -uuser -ppasswd database ./mountpoint\n");
 }
 
 char *mysql_fs_parse_arg(const char *arg, const char *key){
@@ -432,9 +432,7 @@ static int mysqlfs_opt_proc(void *data, const char *arg, int key,
     }
 
     if(!strncmp(arg, "host=", strlen("host="))){
-
         host = strchr(arg, '=') + 1;
-
         return 0;
     }
 
@@ -472,15 +470,16 @@ int main(int argc, char *argv[])
 
     if(!host || !user || !passwd || !db){
         usage();
+        fuse_opt_free_args(&args);
         return EXIT_FAILURE;
     }
 
     fuse_main(args.argc, args.argv, &mysqlfs_oper);
     fuse_opt_free_args(&args);
-
+    
 #ifdef DEBUG
-  muntrace();
+    muntrace();
 #endif
-
+  
     return EXIT_SUCCESS;
 }
