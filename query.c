@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: query.c,v 1.3 2006/06/05 18:43:38 cuspy Exp $
+  $Id: query.c,v 1.4 2006/06/07 16:35:41 cuspy Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -18,7 +18,8 @@
 
 #define SQL_SIZE 10240
 
-int query_getattr(MYSQL *mysql, const char *path, struct stat *stbuf){
+int query_getattr(MYSQL *mysql, const char *path, struct stat *stbuf)
+{
     int ret;
     char sql[SQL_SIZE];
     MYSQL_RES* result;
@@ -69,7 +70,8 @@ int query_getattr(MYSQL *mysql, const char *path, struct stat *stbuf){
     return 0;
 }
 
-int query_inode(MYSQL *mysql, const char *path){
+int query_inode(MYSQL *mysql, const char *path)
+{
     int ret;
     char sql[SQL_SIZE];
     char *path_esc;
@@ -151,7 +153,8 @@ int query_mknod(MYSQL *mysql, const char *path, mode_t mode, dev_t rdev,
     return ret;
 }
 
-int query_mkdir(MYSQL *mysql, const char *path, mode_t mode, int parent){
+int query_mkdir(MYSQL *mysql, const char *path, mode_t mode, int parent)
+{
     int ret;
     char sql[SQL_SIZE];
     char *path_esc;
@@ -185,7 +188,8 @@ int query_mkdir(MYSQL *mysql, const char *path, mode_t mode, int parent){
     return ret;
 }
 
-int query_readdir(MYSQL *mysql, int inode, void *buf, fuse_fill_dir_t filler){
+int query_readdir(MYSQL *mysql, int inode, void *buf, fuse_fill_dir_t filler)
+{
     int ret;
     char sql[SQL_SIZE];
     MYSQL_RES* result;
@@ -217,7 +221,8 @@ int query_readdir(MYSQL *mysql, int inode, void *buf, fuse_fill_dir_t filler){
     return ret;
 }
 
-int query_delete(MYSQL *mysql, const char *path){
+int query_delete(MYSQL *mysql, const char *path)
+{
     int ret;
     char sql[SQL_SIZE];
     char *path_esc;
@@ -356,7 +361,8 @@ int query_write(MYSQL *mysql, const char *path, const char *buf, size_t size,
     return size;
 }
 
-off_t query_size(MYSQL *mysql, const char *path){
+off_t query_size(MYSQL *mysql, const char *path)
+{
     off_t ret;
     char sql[SQL_SIZE];
     char *path_esc;

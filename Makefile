@@ -1,9 +1,10 @@
+# $Id:
 CC=gcc
 LD=ld
 MYSQL_CONFIG=/usr/bin/mysql_config
-#DEFS=-DDEBUG -g
-CFLAGS=-Wall $(DEFS) -DFUSE_USE_VERSION=22 `pkg-config --cflags fuse` `$(MYSQL_CONFIG) --cflags`
-
+#DEFS=-DFUSE_USE_VERSION=22 -DDEBUG -g
+DEFS=-DFUSE_USE_VERSION=22
+CFLAGS=-Wall $(DEFS) `pkg-config --cflags fuse` `$(MYSQL_CONFIG) --cflags`
 LDFLAGS=`pkg-config --libs fuse` `$(MYSQL_CONFIG) --libs`
 
 all: mysqlfs
