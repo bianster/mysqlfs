@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: mysqlfs.c,v 1.3 2006/06/05 18:43:38 cuspy Exp $
+  $Id: mysqlfs.c,v 1.4 2006/07/15 19:28:09 cuspy Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -17,51 +17,42 @@
 #include <libgen.h>
 #include <fuse.h>
 #include <mysql.h>
+#include <pthread.h>
 
 #ifdef DEBUG
 #include <mcheck.h>
 #endif
 
 #include "query.h"
+#include "pool.h"
 
-static char *host = NULL;
-static char *user = NULL;
-static char *passwd = NULL;
-static char *db = NULL;
+static MYSQL_POOL* mysql_pool;
 
 static int mysqlfs_getattr(const char *path, struct stat *stbuf)
 {
     int ret;
-    MYSQL *mysql;
-    MYSQL *conn;
+    MYSQL_CONN *conn;
 
-    fprintf(stderr, "mysqlfs_getattr()\n");
-    fprintf(stderr, "path=%s\n", path);
+    fprintf(stderr, "mysqlfs_getattr(\"%s\")\n", path);
 
     memset(stbuf, 0, sizeof(struct stat));
 
-    mysql = mysql_init(NULL);
-    if(!mysql){
-        fprintf(stderr, "ERROR: mysql_init()\n");
-        return -ENOENT;
-    }
-
-    conn = mysql_real_connect(mysql, host, user, passwd, db, 0, NULL, 0);
+    conn = mysqlfs_pool_get(mysql_pool);
     if(!conn){
-        fprintf(stderr, "Error: mysql_real_connect()\n");
-        fprintf(stderr, "mysql_error: %s\n", mysql_error(mysql));
-        return -ENOENT;
+        fprintf(stderr, "Error: mysqlfs_pool_get()\n");
+        return -EMFILE;
     }
 
-    ret = query_getattr(mysql, path, stbuf);
+    ret = query_getattr(conn->mysql, path, stbuf);
     if(ret){
         fprintf(stderr, "Error: query_getattr()\n");
-        mysql_close(mysql);
+        mysqlfs_pool_return(mysql_pool, conn);
         return -ENOENT;
     }
 
-    stbuf->st_size = query_size(mysql, path);
-    mysql_close(mysql);
+    stbuf->st_size = query_size(conn->mysql, path);
+
+    mysqlfs_pool_return(mysql_pool, conn);
 
     return 0;
 }
@@ -72,37 +63,29 @@ static int mysqlfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     (void) offset;
     (void) fi;
     int ret;
-    MYSQL *mysql;
-    MYSQL *conn;
+    MYSQL_CONN *conn;
     int inode;
 
-    fprintf(stderr, "mysqlfs_readdir()\n");
-    mysql = mysql_init(NULL);
-    if(!mysql){
-        fprintf(stderr, "ERROR: mysql_init()\n");
-        return -ENOENT;
-    }
+    fprintf(stderr, "mysqlfs_readdir(\"%s\")\n", path);
 
-    conn = mysql_real_connect(mysql, host, user, passwd, db, 0, NULL, 0);
+    conn = mysqlfs_pool_get(mysql_pool);
     if(!conn){
-        fprintf(stderr, "Error: mysql_real_connect()\n");
-        fprintf(stderr, "mysql_error: %s\n", mysql_error(mysql));
-        return -ENOENT;
+        fprintf(stderr, "Error: mysqlfs_pool_get()\n");
+        return -EMFILE;
     }
 
-    inode = query_inode(mysql, path);
+    inode = query_inode(conn->mysql, path);
     if(inode < 1){
         fprintf(stderr, "Error: query_inode()\n");
-        mysql_close(mysql);
+        mysqlfs_pool_return(mysql_pool, conn);
         return -ENOENT;
     }
 
     filler(buf, ".", NULL, 0);
     filler(buf, "..", NULL, 0);
 
-    ret = query_readdir(mysql, inode, buf, filler);
-
-    mysql_close(mysql);
+    ret = query_readdir(conn->mysql, inode, buf, filler);
+    mysqlfs_pool_return(mysql_pool, conn);
 
     return 0;
 }
@@ -110,171 +93,120 @@ static int mysqlfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 static int mysqlfs_mknod(const char *path, mode_t mode, dev_t rdev)
 {
     int ret;
-    MYSQL *mysql;
-    MYSQL *conn;
+    MYSQL_CONN *conn;
     int inode;
     char *dir;
 
-    fprintf(stderr, "mysqlfs_mknod()\n");
+    fprintf(stderr, "mysqlfs_mknod(\"%s\")\n", path);
 
-    mysql = mysql_init(NULL);
-    if(!mysql){
-        fprintf(stderr, "ERROR: mysql_init()\n");
-        return -ENOENT;
-    }
-
-    conn = mysql_real_connect(mysql, host, user, passwd, db, 0, NULL, 0);
+    conn = mysqlfs_pool_get(mysql_pool);
     if(!conn){
-        fprintf(stderr, "Error: mysql_real_connect()\n");
-        fprintf(stderr, "mysql_error: %s\n", mysql_error(mysql));
-        return -ENOENT;
+        fprintf(stderr, "Error: mysqlfs_pool_get()\n");
+        return -EMFILE;
     }
 
     dir = strdup(path);
     if(!dir){
         fprintf(stderr, "Error: strdup()\n");
-        mysql_close(mysql);
+        mysqlfs_pool_return(mysql_pool, conn);
         return -ENOENT;
     }
 
     dirname(dir);
-    inode = query_inode(mysql, dir);
+    inode = query_inode(conn->mysql, dir);
     free(dir);
 
-    ret = query_mknod(mysql, path, mode, rdev, inode);
+    ret = query_mknod(conn->mysql, path, mode, rdev, inode);
 
-    mysql_close(mysql);
-
-    /*
-      if (S_ISFIFO(mode))
-      res = mkfifo(path, mode);
-      else
-      res = mknod(path, mode, rdev);
-      if (res == -1)
-      return -errno;
-    */
+    mysqlfs_pool_return(mysql_pool, conn);
     return 0;
 }
 
 static int mysqlfs_mkdir(const char *path, mode_t mode){
     int ret;
-    
-    MYSQL *mysql;
-    MYSQL *conn;
+    MYSQL_CONN *conn;
     int inode;
     char* dir;
 
-    fprintf(stderr, "mysqlfs_mkdir()\n");
-
-    mysql = mysql_init(NULL);
-    if(!mysql){
-        fprintf(stderr, "ERROR: mysql_init()\n");
-        return -ENOENT;
-    }
-
-    conn = mysql_real_connect(mysql, host, user, passwd, db, 0, NULL, 0);
+    fprintf(stderr, "mysqlfs_mkdir(\"%s\")\n", path);
+    conn = mysqlfs_pool_get(mysql_pool);
     if(!conn){
-        fprintf(stderr, "Error: mysql_real_connect()\n");
-        fprintf(stderr, "mysql_error: %s\n", mysql_error(mysql));
-        return -ENOENT;
+        fprintf(stderr, "Error: mysqlfs_pool_get()\n");
+        return -EMFILE;
     }
-
-    printf("ping=%d\n", mysql_ping(mysql));
 
     dir = strdup(path);
     if(!dir){
         fprintf(stderr, "Error: strdup()\n");
-        mysql_close(mysql);
+        mysqlfs_pool_return(mysql_pool, conn);
         return -ENOENT;
     }
 
     dirname(dir);
-    inode = query_inode(mysql, dir);
+    inode = query_inode(conn->mysql, dir);
     free(dir);
     if(inode < 1){
         fprintf(stderr, "Error: query_inode()\n");
-        mysql_close(mysql);
+        mysqlfs_pool_return(mysql_pool, conn);
         return -ENOENT;
     }
 
-    ret = query_mkdir(mysql, path, mode, inode);
+    ret = query_mkdir(conn->mysql, path, mode, inode);
     if(ret){
         fprintf(stderr, "Error: query_mkdir()\n");
-        mysql_close(mysql);
+        mysqlfs_pool_return(mysql_pool, conn);
         return -ENOENT;
     }
 
-    mysql_close(mysql);
+    mysqlfs_pool_return(mysql_pool, conn);
 
     return 0;
 }
 
 static int mysqlfs_unlink(const char *path){
-    MYSQL *mysql;
-    MYSQL *conn;
+    MYSQL_CONN *conn;
 
-    fprintf(stderr, "mysqlfs_unlink()\n");
-    mysql = mysql_init(NULL);
-
-    if(!mysql){
-        fprintf(stderr, "ERROR: mysql_init()\n");
-        return -ENOENT;
-    }
-
-    conn = mysql_real_connect(mysql, host, user, passwd, db, 0, NULL, 0);
+    fprintf(stderr, "mysqlfs_unlink(\"%s\")\n", path);
+    conn = mysqlfs_pool_get(mysql_pool);
     if(!conn){
-        fprintf(stderr, "Error: mysql_real_connect()\n");
-        fprintf(stderr, "mysql_error: %s\n", mysql_error(mysql));
-        return -ENOENT;
+        fprintf(stderr, "Error: mysqlfs_pool_get()\n");
+        return -EMFILE;
     }
 
-    query_delete(mysql, path);
+    query_delete(conn->mysql, path);
 
-    mysql_close(mysql);
+    mysqlfs_pool_return(mysql_pool, conn);
+
     return 0;
 }
 
 static int mysqlfs_rmdir(const char *path){
-    MYSQL *mysql;
-    MYSQL *conn;
+    MYSQL_CONN *conn;
 
-    fprintf(stderr, "mysqlfs_rmdir()\n");
-    mysql = mysql_init(NULL);
+    fprintf(stderr, "mysqlfs_rmdir(\"%s\")\n", path);
+    conn = mysqlfs_pool_get(mysql_pool);
+    query_delete(conn->mysql, path);
+    mysqlfs_pool_return(mysql_pool, conn);
 
-    if(!mysql){
-        fprintf(stderr, "ERROR: mysql_init()\n");
-        return -ENOENT;
-    }
-
-    conn = mysql_real_connect(mysql, host, user, passwd, db, 0, NULL, 0);
-    if(!conn){
-        fprintf(stderr, "Error: mysql_real_connect()\n");
-        fprintf(stderr, "mysql_error: %s\n", mysql_error(mysql));
-        return -ENOENT;
-    }
-    query_delete(mysql, path);
-    mysql_close(mysql);
     return 0;
 }
 
-
-
 static int mysqlfs_flush(const char *path, struct fuse_file_info *fi)
 {
-    fprintf(stderr, "mysql_flush()\n");
+    fprintf(stderr, "mysql_flush(\"%s\")\n", path);
     return 0;
 }
 
 static int mysqlfs_truncate(const char* path, off_t off)
 {
-    fprintf(stderr, "mysql_truncate()\n");
+    fprintf(stderr, "mysql_truncate(\"%s\")\n", path);
     printf("off=%lld\n", off);
     return 0;
 }
 
 static int mysqlfs_utime(const char *path, struct utimbuf *time){
 
-    fprintf(stderr, "mysql_utime()\n");
+    fprintf(stderr, "mysql_utime(\"%s\")\n", path);
     fprintf(stderr, "atime=%s", ctime(&time->actime));
     fprintf(stderr, "mtime=%s", ctime(&time->modtime));
 
@@ -283,34 +215,26 @@ static int mysqlfs_utime(const char *path, struct utimbuf *time){
 
 static int mysqlfs_open(const char *path, struct fuse_file_info *fi)
 {
-    MYSQL *mysql;
-    MYSQL *conn;
+    MYSQL_CONN *conn;
     int inode;
 
-    fprintf(stderr, "mysqlfs_open()\n");
+    fprintf(stderr, "mysqlfs_open(\"%s\")\n", path);
 
-    mysql = mysql_init(NULL);
-    if(!mysql){
-        fprintf(stderr, "ERROR: mysql_init()\n");
-        return -ENOENT;
-    }
-
-    conn = mysql_real_connect(mysql, host, user, passwd, db, 0, NULL, 0);
+    conn = mysqlfs_pool_get(mysql_pool);    
     if(!conn){
-        fprintf(stderr, "Error: mysql_real_connect()\n");
-        fprintf(stderr, "mysql_error: %s\n", mysql_error(mysql));
-        return -ENOENT;
+        fprintf(stderr, "Error: mysqlfs_pool_get()\n");
+        return -EMFILE;
     }
-    
-    inode = query_inode(mysql, path);
-    printf("inode=%d\n", inode);
+
+    inode = query_inode(conn->mysql, path);
+
     if(inode < 1){
-        mysql_close(mysql);
+        mysqlfs_pool_return(mysql_pool, conn);
         return -ENOENT;
     }
 
-    mysql_close(mysql);
-    
+    mysqlfs_pool_return(mysql_pool, conn);
+
 /*
     if((fi->flags & 3) != O_RDONLY)
         return -EACCES;
@@ -323,29 +247,20 @@ static int mysqlfs_read(const char *path, char *buf, size_t size, off_t offset,
                         struct fuse_file_info *fi)
 {
     int ret;
-    MYSQL *mysql;
-    MYSQL *conn;
+    MYSQL_CONN *conn;
 
-    fprintf(stderr, "mysqlfs_read()\n");
+    fprintf(stderr, "mysqlfs_read(\"%s\")\n", path);
     printf("size=%d\n", size);
     printf("offset=%lld\n", offset);
 
-    mysql = mysql_init(NULL);
-    if(!mysql){
-        fprintf(stderr, "ERROR: mysql_init()\n");
-        return -ENOENT;
-    }
-
-    conn = mysql_real_connect(mysql, host, user, passwd, db, 0, NULL, 0);
+    conn = mysqlfs_pool_get(mysql_pool);
     if(!conn){
-        fprintf(stderr, "Error: mysql_real_connect()\n");
-        fprintf(stderr, "mysql_error: %s\n", mysql_error(mysql));
-        return -ENOENT;
+        fprintf(stderr, "Error: mysqlfs_pool_get()\n");
+        return -EMFILE;
     }
-    
-    ret = query_read(mysql, path, buf, size, offset);
 
-    mysql_close(mysql);
+    ret = query_read(conn->mysql, path, buf, size, offset);
+    mysqlfs_pool_return(mysql_pool, conn);
 
     return ret;
 }
@@ -354,29 +269,20 @@ static int mysqlfs_write(const char *path, const char *buf, size_t size,
                          off_t offset, struct fuse_file_info *fi)
 {
     int ret;
-    MYSQL *mysql;
-    MYSQL *conn;
+    MYSQL_CONN *conn;
 
-    fprintf(stderr, "mysqlfs_write()\n");
+    fprintf(stderr, "mysqlfs_write(\"%s\")\n", path);
     printf("size=%d\n", size);
     printf("offset=%lld\n", offset);
 
-    mysql = mysql_init(NULL);
-    if(!mysql){
-        fprintf(stderr, "ERROR: mysql_init()\n");
-        return -ENOENT;
-    }
-
-    conn = mysql_real_connect(mysql, host, user, passwd, db, 0, NULL, 0);
+    conn = mysqlfs_pool_get(mysql_pool);
     if(!conn){
-        fprintf(stderr, "Error: mysql_real_connect()\n");
-        fprintf(stderr, "mysql_error: %s\n", mysql_error(mysql));
-        return -ENOENT;
+        fprintf(stderr, "Error: mysqlfs_pool_get()\n");
+        return -EMFILE;
     }
-    
-    ret = query_write(mysql, path, buf, size, offset);
 
-    mysql_close(mysql);
+    ret = query_write(conn->mysql, path, buf, size, offset);
+    mysqlfs_pool_return(mysql_pool, conn);
 
     return ret;
 }
@@ -406,25 +312,15 @@ static struct fuse_operations mysqlfs_oper = {
 };
 
 void usage(){
-    fprintf(stderr, "usage: mysqlfs -hhost -uuser -ppasswd database ./mountpoint\n");
-}
-
-char *mysql_fs_parse_arg(const char *arg, const char *key){
-    char * ret;
-
-    if(!strncmp(arg, key, strlen(key))){
-        ret  = strdup(strchr(arg, '=') + 1);
-        printf("hoge=%s\n", ret);
-        printf("hoge=%p\n", ret);
-
-        return ret;
-    }
-
-    return NULL;
+    fprintf(stderr,
+            "usage: mysqlfs -ohost=host -ouser=user -opasswd=passwd "
+            "-odatabase=database ./mountpoint\n");
 }
 
 static int mysqlfs_opt_proc(void *data, const char *arg, int key,
                             struct fuse_args *outargs){
+    MYSQLFS_OPT *opt = (MYSQLFS_OPT*)data;
+    char *str;
 
     if(key != FUSE_OPT_KEY_OPT){
         fuse_opt_add_arg(outargs, arg);
@@ -432,22 +328,32 @@ static int mysqlfs_opt_proc(void *data, const char *arg, int key,
     }
 
     if(!strncmp(arg, "host=", strlen("host="))){
-        host = strchr(arg, '=') + 1;
+        str = strchr(arg, '=') + 1;
+        opt->host = str;
         return 0;
     }
 
     if(!strncmp(arg, "user=", strlen("user="))){
-        user = strchr(arg, '=') + 1;
+        str = strchr(arg, '=') + 1;
+        opt->user = str;
         return 0;
     }
 
     if(!strncmp(arg, "password=", strlen("password="))){
-        passwd = strchr(arg, '=') + 1;
+        str = strchr(arg, '=') + 1;
+        opt->passwd = str;
         return 0;
     }
 
     if(!strncmp(arg, "database=", strlen("database="))){
-        db = strchr(arg, '=') + 1;
+        str = strchr(arg, '=') + 1;
+        opt->db = str;
+        return 0;
+    }
+
+    if(!strncmp(arg, "connection=", strlen("connection="))){
+        str = strchr(arg, '=') + 1;
+        opt->connection = atoi(str);
         return 0;
     }
 
@@ -462,21 +368,36 @@ int main(int argc, char *argv[])
 {
     struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 
+    static MYSQLFS_OPT opt;
+
+    /* default param */
+    opt.connection = 5;
+
 #ifdef DEBUG
     mtrace();
 #endif
 
-    fuse_opt_parse(&args, NULL, NULL, mysqlfs_opt_proc);
+    fuse_opt_parse(&args, &opt, NULL, mysqlfs_opt_proc);
 
-    if(!host || !user || !passwd || !db){
+    if(!opt.host || !opt.user || !opt.passwd || !opt.db){
         usage();
         fuse_opt_free_args(&args);
         return EXIT_FAILURE;
     }
 
+    mysql_pool = mysqlfs_pool_init(&opt);
+    if(!mysql_pool){
+        fprintf(stderr, "Error: mysqlfs_pool_init()\n");
+        fuse_opt_free_args(&args);
+        return EXIT_FAILURE;        
+    }
+
     fuse_main(args.argc, args.argv, &mysqlfs_oper);
     fuse_opt_free_args(&args);
-    
+
+    mysqlfs_pool_print(mysql_pool);
+    mysqlfs_pool_free(mysql_pool);
+
 #ifdef DEBUG
     muntrace();
 #endif

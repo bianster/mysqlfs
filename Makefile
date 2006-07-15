@@ -12,5 +12,5 @@ all: mysqlfs
 clean:
 	rm -rf mysqlfs *.o *~ mtrace.log
 
-mysqlfs: mysqlfs.c query.o
+mysqlfs: mysqlfs.c query.o pool.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
