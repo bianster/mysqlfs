@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: mysqlfs.c,v 1.5 2006/07/17 13:26:52 cuspy Exp $
+  $Id: mysqlfs.c,v 1.6 2006/07/17 14:42:24 cuspy Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -13,7 +13,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
-//#include <time.h>
 #include <libgen.h>
 #include <fuse.h>
 #include <mysql.h>
@@ -181,14 +180,9 @@ static int mysqlfs_unlink(const char *path){
     }
 
     ret = query_delete(conn->mysql, path);
-    if(ret){
-        mysqlfs_pool_return(mysql_pool, conn);
-        return -EBUSY;
-    }
-
     mysqlfs_pool_return(mysql_pool, conn);
 
-    return 0;
+    return ret;
 }
 
 static int mysqlfs_rmdir(const char *path)
@@ -204,20 +198,28 @@ static int mysqlfs_rmdir(const char *path)
     }
 
     ret = query_delete(conn->mysql, path);
-    if(ret){
-        mysqlfs_pool_return(mysql_pool, conn);
-        return -EBUSY;
-    }
-
     mysqlfs_pool_return(mysql_pool, conn);
 
-    return 0;
+    return ret;
 }
 
-static int mysqlfs_flush(const char *path, struct fuse_file_info *fi)
+static int mysqlfs_chmod(const char* path, mode_t mode)
 {
-    fprintf(stderr, "mysql_flush(\"%s\")\n", path);
-    return 0;
+    int ret;
+    MYSQL_CONN *conn;
+
+    fprintf(stderr, "mysql_chmod(\"%s\")\n", path);
+
+    conn = mysqlfs_pool_get(mysql_pool);
+    if(!conn){
+        fprintf(stderr, "Error: mysqlfs_pool_get()\n");
+        return -EMFILE;
+    }
+
+    ret = query_chmod(conn->mysql, path, mode);
+    mysqlfs_pool_return(mysql_pool, conn);
+
+    return ret;
 }
 
 static int mysqlfs_truncate(const char* path, off_t off)
@@ -241,13 +243,9 @@ static int mysqlfs_utime(const char *path, struct utimbuf *time)
     }
 
     ret = query_utime(conn->mysql, path, time);
-    if(ret){
-        mysqlfs_pool_return(mysql_pool, conn);
-        return -EBUSY;
-    }
     mysqlfs_pool_return(mysql_pool, conn);
-    
-    return 0;
+
+    return ret;
 }
 
 static int mysqlfs_open(const char *path, struct fuse_file_info *fi)
@@ -324,6 +322,12 @@ static int mysqlfs_write(const char *path, const char *buf, size_t size,
     return ret;
 }
 
+static int mysqlfs_flush(const char *path, struct fuse_file_info *fi)
+{
+    fprintf(stderr, "mysql_flush(\"%s\")\n", path);
+    return 0;
+}
+
 /*
 static int mysqlfs_release(const char* path, struct fuse_file_info* fi)
 {
@@ -339,6 +343,7 @@ static struct fuse_operations mysqlfs_oper = {
     .mkdir	 = mysqlfs_mkdir,
     .unlink  = mysqlfs_unlink,
     .rmdir   = mysqlfs_rmdir,
+    .chmod   = mysqlfs_chmod,
     .truncate= mysqlfs_truncate,
     .utime   = mysqlfs_utime,
     .open	 = mysqlfs_open,

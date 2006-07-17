@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: query.c,v 1.5 2006/07/17 13:26:52 cuspy Exp $
+  $Id: query.c,v 1.6 2006/07/17 14:42:25 cuspy Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -213,7 +213,6 @@ int query_delete(MYSQL *mysql, const char *path)
     int ret;
     char esc_path[PATH_MAX * 2];
     char sql[SQL_MAX];
-    MYSQL_RES* result;
 
     mysql_real_escape_string(mysql, esc_path, path, strlen(path));
     snprintf(sql, SQL_MAX,
@@ -224,13 +223,33 @@ int query_delete(MYSQL *mysql, const char *path)
     if(ret){
         fprintf(stderr, "ERROR: mysql_query()\n");
         fprintf(stderr, "mysql_error: %s\n", mysql_error(mysql));
-        return -1;
+        return -EBUSY;
     }
 
-    result = mysql_store_result(mysql);
-    mysql_free_result(result);
+    return 0;
+}
 
-    return ret;
+int query_chmod(MYSQL *mysql, const char *path, mode_t mode){
+    int ret;
+    char esc_path[PATH_MAX * 2];
+    char sql[SQL_MAX];
+
+    mysql_real_escape_string(mysql, esc_path, path, strlen(path));
+
+    snprintf(sql, SQL_MAX,
+             "UPDATE fs SET mode=%d WHERE path='%s'",
+             mode, esc_path);
+
+    fprintf(stderr, "sql=%s\n", sql);
+
+    ret = mysql_query(mysql, sql);
+    if(ret){
+        fprintf(stderr, "Error: mysql_query()\n");
+        fprintf(stderr, "mysql_error: %s\n", mysql_error(mysql));
+        return -EBUSY;
+    }
+
+    return 0;
 }
 
 int query_utime(MYSQL *mysql, const char *path, struct utimbuf *time){
@@ -255,7 +274,7 @@ int query_utime(MYSQL *mysql, const char *path, struct utimbuf *time){
     if(ret){
         fprintf(stderr, "Error: mysql_query()\n");
         fprintf(stderr, "mysql_error: %s\n", mysql_error(mysql));
-        return -1;
+        return -EBUSY;
     }
 
     return 0;
