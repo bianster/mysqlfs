@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: mysqlfs.c,v 1.4 2006/07/15 19:28:09 cuspy Exp $
+  $Id: mysqlfs.c,v 1.5 2006/07/17 13:26:52 cuspy Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -13,7 +13,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <time.h>
+//#include <time.h>
 #include <libgen.h>
 #include <fuse.h>
 #include <mysql.h>
@@ -23,8 +23,11 @@
 #include <mcheck.h>
 #endif
 
+#include "mysqlfs.h"
 #include "query.h"
 #include "pool.h"
+
+#define PATH_MAX 1024
 
 static MYSQL_POOL* mysql_pool;
 
@@ -95,9 +98,16 @@ static int mysqlfs_mknod(const char *path, mode_t mode, dev_t rdev)
     int ret;
     MYSQL_CONN *conn;
     int inode;
-    char *dir;
+    char dir_path[PATH_MAX];
 
     fprintf(stderr, "mysqlfs_mknod(\"%s\")\n", path);
+
+    if(!(strlen(path) < PATH_MAX)){
+        fprintf(stderr, "Error: Filename too long\n");
+        return -ENAMETOOLONG;
+    }
+    strncpy(dir_path, path, PATH_MAX);
+    dirname(dir_path);
 
     conn = mysqlfs_pool_get(mysql_pool);
     if(!conn){
@@ -105,18 +115,17 @@ static int mysqlfs_mknod(const char *path, mode_t mode, dev_t rdev)
         return -EMFILE;
     }
 
-    dir = strdup(path);
-    if(!dir){
-        fprintf(stderr, "Error: strdup()\n");
+    inode = query_inode(conn->mysql, dir_path);
+    if(inode < 0){
         mysqlfs_pool_return(mysql_pool, conn);
         return -ENOENT;
     }
 
-    dirname(dir);
-    inode = query_inode(conn->mysql, dir);
-    free(dir);
-
     ret = query_mknod(conn->mysql, path, mode, rdev, inode);
+    if(ret){
+        mysqlfs_pool_return(mysql_pool, conn);
+        return -EBUSY;
+    }
 
     mysqlfs_pool_return(mysql_pool, conn);
     return 0;
@@ -126,27 +135,25 @@ static int mysqlfs_mkdir(const char *path, mode_t mode){
     int ret;
     MYSQL_CONN *conn;
     int inode;
-    char* dir;
+    char dir_path[PATH_MAX];
 
     fprintf(stderr, "mysqlfs_mkdir(\"%s\")\n", path);
+    
+    if(!(strlen(path) < PATH_MAX)){
+        fprintf(stderr, "Error: Filename too long\n");
+        return -ENAMETOOLONG;
+    }
+    strncpy(dir_path, path, PATH_MAX);
+    dirname(dir_path);
+
     conn = mysqlfs_pool_get(mysql_pool);
     if(!conn){
         fprintf(stderr, "Error: mysqlfs_pool_get()\n");
         return -EMFILE;
     }
 
-    dir = strdup(path);
-    if(!dir){
-        fprintf(stderr, "Error: strdup()\n");
-        mysqlfs_pool_return(mysql_pool, conn);
-        return -ENOENT;
-    }
-
-    dirname(dir);
-    inode = query_inode(conn->mysql, dir);
-    free(dir);
+    inode = query_inode(conn->mysql, dir_path);
     if(inode < 1){
-        fprintf(stderr, "Error: query_inode()\n");
         mysqlfs_pool_return(mysql_pool, conn);
         return -ENOENT;
     }
@@ -155,15 +162,15 @@ static int mysqlfs_mkdir(const char *path, mode_t mode){
     if(ret){
         fprintf(stderr, "Error: query_mkdir()\n");
         mysqlfs_pool_return(mysql_pool, conn);
-        return -ENOENT;
+        return -EBUSY;
     }
 
     mysqlfs_pool_return(mysql_pool, conn);
-
     return 0;
 }
 
 static int mysqlfs_unlink(const char *path){
+    int ret;
     MYSQL_CONN *conn;
 
     fprintf(stderr, "mysqlfs_unlink(\"%s\")\n", path);
@@ -173,19 +180,35 @@ static int mysqlfs_unlink(const char *path){
         return -EMFILE;
     }
 
-    query_delete(conn->mysql, path);
+    ret = query_delete(conn->mysql, path);
+    if(ret){
+        mysqlfs_pool_return(mysql_pool, conn);
+        return -EBUSY;
+    }
 
     mysqlfs_pool_return(mysql_pool, conn);
 
     return 0;
 }
 
-static int mysqlfs_rmdir(const char *path){
+static int mysqlfs_rmdir(const char *path)
+{
+    int ret;
     MYSQL_CONN *conn;
 
     fprintf(stderr, "mysqlfs_rmdir(\"%s\")\n", path);
     conn = mysqlfs_pool_get(mysql_pool);
-    query_delete(conn->mysql, path);
+    if(!conn){
+        fprintf(stderr, "Error: mysqlfs_pool_get()\n");
+        return -EMFILE;
+    }
+
+    ret = query_delete(conn->mysql, path);
+    if(ret){
+        mysqlfs_pool_return(mysql_pool, conn);
+        return -EBUSY;
+    }
+
     mysqlfs_pool_return(mysql_pool, conn);
 
     return 0;
@@ -204,12 +227,26 @@ static int mysqlfs_truncate(const char* path, off_t off)
     return 0;
 }
 
-static int mysqlfs_utime(const char *path, struct utimbuf *time){
+static int mysqlfs_utime(const char *path, struct utimbuf *time)
+{
+    int ret;
+    MYSQL_CONN *conn;
 
     fprintf(stderr, "mysql_utime(\"%s\")\n", path);
-    fprintf(stderr, "atime=%s", ctime(&time->actime));
-    fprintf(stderr, "mtime=%s", ctime(&time->modtime));
 
+    conn = mysqlfs_pool_get(mysql_pool);
+    if(!conn){
+        fprintf(stderr, "Error: mysqlfs_pool_get()\n");
+        return -EMFILE;
+    }
+
+    ret = query_utime(conn->mysql, path, time);
+    if(ret){
+        mysqlfs_pool_return(mysql_pool, conn);
+        return -EBUSY;
+    }
+    mysqlfs_pool_return(mysql_pool, conn);
+    
     return 0;
 }
 

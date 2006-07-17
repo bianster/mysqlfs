@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: pool.c,v 1.1 2006/07/15 19:28:09 cuspy Exp $
+  $Id: pool.c,v 1.2 2006/07/17 13:26:52 cuspy Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -135,7 +135,7 @@ void mysqlfs_pool_print(MYSQL_POOL *pool)
     pthread_mutex_lock(&mysql_pool_mutex);
     
     for(i=0; i<pool->num; i++){
-        printf("use[%d] = %d\n", i, pool->use[i]);
+        printf("pool->use[%d] = %d\n", i, pool->use[i]);
     }
 
     pthread_mutex_unlock(&mysql_pool_mutex);

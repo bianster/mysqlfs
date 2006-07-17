@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: query.h,v 1.3 2006/06/05 18:43:38 cuspy Exp $
+  $Id: query.h,v 1.4 2006/07/17 13:26:52 cuspy Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -19,4 +19,7 @@ int query_write(MYSQL *mysql, const char *path, const char* buf, size_t size,
                 off_t offset);
 
 int query_delete(MYSQL *mysql, const char* path);
+
+int query_chmod(MYSQL *mysql, const char* path, mode_t mode);
+int query_utime(MYSQL *mysql, const char* path, struct utimbuf *time);
 off_t query_size(MYSQL *mysql, const char* path);
