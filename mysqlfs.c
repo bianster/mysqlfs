@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: mysqlfs.c,v 1.6 2006/07/17 14:42:24 cuspy Exp $
+  $Id: mysqlfs.c,v 1.7 2006/07/22 18:09:48 cuspy Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -49,14 +49,14 @@ static int mysqlfs_getattr(const char *path, struct stat *stbuf)
     if(ret){
         fprintf(stderr, "Error: query_getattr()\n");
         mysqlfs_pool_return(mysql_pool, conn);
-        return -ENOENT;
+        return ret;
+    }else{
+        stbuf->st_size = query_size(conn->mysql, path);
     }
-
-    stbuf->st_size = query_size(conn->mysql, path);
 
     mysqlfs_pool_return(mysql_pool, conn);
 
-    return 0;
+    return ret;
 }
 
 static int mysqlfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
@@ -80,7 +80,7 @@ static int mysqlfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     if(inode < 1){
         fprintf(stderr, "Error: query_inode()\n");
         mysqlfs_pool_return(mysql_pool, conn);
-        return -ENOENT;
+        return inode;
     }
 
     filler(buf, ".", NULL, 0);
@@ -123,7 +123,7 @@ static int mysqlfs_mknod(const char *path, mode_t mode, dev_t rdev)
     ret = query_mknod(conn->mysql, path, mode, rdev, inode);
     if(ret){
         mysqlfs_pool_return(mysql_pool, conn);
-        return -EBUSY;
+        return -EIO;
     }
 
     mysqlfs_pool_return(mysql_pool, conn);
@@ -161,7 +161,7 @@ static int mysqlfs_mkdir(const char *path, mode_t mode){
     if(ret){
         fprintf(stderr, "Error: query_mkdir()\n");
         mysqlfs_pool_return(mysql_pool, conn);
-        return -EBUSY;
+        return -EIO;
     }
 
     mysqlfs_pool_return(mysql_pool, conn);
@@ -180,6 +180,11 @@ static int mysqlfs_unlink(const char *path){
     }
 
     ret = query_delete(conn->mysql, path);
+    if(ret){
+        fprintf(stderr, "Error: query_unlink()\n");
+        mysqlfs_pool_return(mysql_pool, conn);
+        return -EIO;
+    }
     mysqlfs_pool_return(mysql_pool, conn);
 
     return ret;
@@ -198,6 +203,12 @@ static int mysqlfs_rmdir(const char *path)
     }
 
     ret = query_delete(conn->mysql, path);
+    if(ret){
+        fprintf(stderr, "Error: query_rmdir()\n");
+        mysqlfs_pool_return(mysql_pool, conn);
+        return -EIO;
+    }
+
     mysqlfs_pool_return(mysql_pool, conn);
 
     return ret;
@@ -217,6 +228,12 @@ static int mysqlfs_chmod(const char* path, mode_t mode)
     }
 
     ret = query_chmod(conn->mysql, path, mode);
+    if(ret){
+        fprintf(stderr, "Error: query_chmod()\n");
+        mysqlfs_pool_return(mysql_pool, conn);
+        return -EIO;
+    }
+
     mysqlfs_pool_return(mysql_pool, conn);
 
     return ret;
@@ -243,6 +260,12 @@ static int mysqlfs_utime(const char *path, struct utimbuf *time)
     }
 
     ret = query_utime(conn->mysql, path, time);
+    if(ret){
+        fprintf(stderr, "Error: query_utime()\n");
+        mysqlfs_pool_return(mysql_pool, conn);
+        return -EIO;
+    }
+
     mysqlfs_pool_return(mysql_pool, conn);
 
     return ret;
@@ -262,7 +285,6 @@ static int mysqlfs_open(const char *path, struct fuse_file_info *fi)
     }
 
     inode = query_inode(conn->mysql, path);
-
     if(inode < 1){
         mysqlfs_pool_return(mysql_pool, conn);
         return -ENOENT;
@@ -328,13 +350,11 @@ static int mysqlfs_flush(const char *path, struct fuse_file_info *fi)
     return 0;
 }
 
-/*
-static int mysqlfs_release(const char* path, struct fuse_file_info* fi)
+static int mysqlfs_release(const char *path, struct fuse_file_info *fi)
 {
-    fprintf(stderr, "mysqlfs_release()\n");
+    fprintf(stderr, "mysqlfs_release(\"%s\")\n", path);
     return 0;
 }
-*/
 
 static struct fuse_operations mysqlfs_oper = {
     .getattr = mysqlfs_getattr,
@@ -350,7 +370,7 @@ static struct fuse_operations mysqlfs_oper = {
     .read	 = mysqlfs_read,
     .write	 = mysqlfs_write,
     .flush   = mysqlfs_flush,
-//    .release= mysqlfs_release,
+    .release = mysqlfs_release,
 };
 
 void usage(){

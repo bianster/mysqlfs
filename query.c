@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: query.c,v 1.6 2006/07/17 14:42:25 cuspy Exp $
+  $Id: query.c,v 1.7 2006/07/22 18:09:48 cuspy Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -42,23 +42,23 @@ int query_getattr(MYSQL *mysql, const char *path, struct stat *stbuf)
     if(ret){
         fprintf(stderr, "ERROR: mysql_query()\n");
         fprintf(stderr, "mysql_error: %s\n", mysql_error(mysql));
-        return -1;
+        return -EIO;
     }
 
     result = mysql_store_result(mysql);
     if(!result){
         fprintf(stderr, "ERROR: mysql_store_result()\n");
         fprintf(stderr, "mysql_error: %s\n", mysql_error(mysql));
-        return -1;
+        return -EIO;
     }
 
     if(mysql_num_rows(result) != 1 && mysql_num_fields(result) != 2){
         mysql_free_result(result);
-        return -1;
+        return -ENOENT;
     }
     row = mysql_fetch_row(result);
     if(!row){
-        return -1;
+        return -EIO;
     }
 
     stbuf->st_mode = atoi(row[1]);
@@ -89,24 +89,24 @@ int query_inode(MYSQL *mysql, const char *path)
     if(ret){
         fprintf(stderr, "ERROR: mysql_query()\n");
         fprintf(stderr, "mysql_error: %s\n", mysql_error(mysql));
-        return -1;
+        return -EIO;
     }
 
     result = mysql_store_result(mysql);
     if(!result){
         fprintf(stderr, "ERROR: mysql_store_result()\n");
         fprintf(stderr, "mysql_error: %s\n", mysql_error(mysql));
-        return -1;
+        return -EIO;
     }
 
     if(mysql_num_rows(result) != 1 && mysql_num_fields(result) != 1){
         mysql_free_result(result);
-        return -1;
+        return -ENOENT;
     }
 
     row = mysql_fetch_row(result);
     if(!row){
-        return -1;
+        return -EIO;
     }
     ret = atoi(row[0]);
     mysql_free_result(result);
@@ -125,7 +125,7 @@ int query_mknod(MYSQL *mysql, const char *path, mode_t mode, dev_t rdev,
     mysql_real_escape_string(mysql, esc_path, path, strlen(path));
     snprintf(sql, SQL_MAX,
              "INSERT INTO fs(path, mode, parent, atime, ctime, mtime, data)"
-             "VALUES('%s', %d, %d, 0, 0, 0, \"\")",
+             "VALUES('%s', %d, %d, NOW(), NOW(), NOW(), \"\")",
              esc_path, S_IFREG | mode, parent);
 
     printf("sql=%s\n", sql);
@@ -154,8 +154,8 @@ int query_mkdir(MYSQL *mysql, const char *path, mode_t mode, int parent)
 
     mysql_real_escape_string(mysql, esc_path, path, strlen(path));
     snprintf(sql, sizeof(sql),
-             "INSERT INTO fs(path, mode, parent)"
-             "VALUES('%s', %d, %d)",
+             "INSERT INTO fs(path, mode, parent, atime, mtime)"
+             "VALUES('%s', %d, %d, NOW(), NOW())",
              esc_path, S_IFDIR | mode, parent);
 
     printf("sql=%s\n", sql);
