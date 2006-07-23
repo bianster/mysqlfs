@@ -1,0 +1,21 @@
+dnl Process this file with autoconf to produce a configure script.
+dnl $Id: configure.in,v 1.1 2006/07/23 17:28:15 cuspy Exp $
+
+AC_INIT(mysqlfs.c)
+AM_INIT_AUTOMAKE(mysqlfs, 0.2)
+
+AC_DEFINE(_FILE_OFFSET_BITS,64,[Use 64 bits file offsets])
+AC_DEFINE(FUSE_USE_VERSION,22,[Fuse API Version])
+
+AC_PROG_CC
+
+AC_CHECK_LIB(pthread, pthread_create,, AC_MSG_ERROR([Please install pthreads library first.]))
+AC_CHECK_LIB(z, deflate,, AC_MSG_ERROR([Please install zlib library first.]))
+AC_CHECK_LIB(mysqlclient, mysql_init,, AC_MSG_ERROR([Please install mysqlclient library first.]))
+AC_CHECK_LIB(fuse, fuse_main,, AC_MSG_ERROR([Please install fuse library first.]))
+
+AC_CHECK_HEADERS(stdio.h)
+AC_CHECK_HEADERS(mysql/mysql.h,, AC_MSG_ERROR([Please install mysql header files.]))
+AC_CHECK_HEADERS(fuse.h,, AC_MSG_ERROR([Please install fuse header files.]))
+
+AC_OUTPUT(Makefile)
