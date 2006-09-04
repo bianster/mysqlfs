@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: query.c,v 1.9 2006/09/04 11:43:29 ludvigm Exp $
+  $Id: query.c,v 1.10 2006/09/04 13:11:21 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -362,9 +362,8 @@ int query_write(MYSQL *mysql, const char *path, const char *data, size_t size,
                 off_t offset)
 {
     MYSQL_STMT *stmt;
-    MYSQL_RES *result;
     MYSQL_BIND bind[5];
-    int ret, path_len = strlen(path);
+    int  path_len = strlen(path);
     char sql[SQL_MAX];
     size_t current_size = query_size(mysql, path);
 
@@ -390,11 +389,11 @@ int query_write(MYSQL *mysql, const char *path, const char *data, size_t size,
         pos = snprintf(sql, sizeof(sql),
 		 "UPDATE fs LEFT JOIN data ON fs.id = data.id SET data=CONCAT(");
 	if (offset > 0)
-	    pos += snprintf(sql + pos, sizeof(sql) - pos, "RPAD(IF(ISNULL(data),'', data), %zd, '\\0'),", offset);
+	    pos += snprintf(sql + pos, sizeof(sql) - pos, "RPAD(IF(ISNULL(data),'', data), %llu, '\\0'),", offset);
 	pos += snprintf(sql + pos, sizeof(sql) - pos, "?,");
 	new_size = offset + size;
 	if (offset + size < current_size) {
-	    pos += snprintf(sql + pos, sizeof(sql) - pos, "SUBSTRING(data FROM %zd),", offset + size + 1);
+	    pos += snprintf(sql + pos, sizeof(sql) - pos, "SUBSTRING(data FROM %llu),", offset + size + 1);
 	    new_size = current_size;
 	}
 	sql[--pos] = '\0';	/* Remove the trailing comma. */
@@ -496,3 +495,33 @@ size_t query_size(MYSQL *mysql, const char *path)
 
     return ret;
 }
+
+int query_rename(MYSQL *mysql, const char *from, const char *to){
+    int ret;
+    char esc_from[PATH_MAX * 2], esc_to[PATH_MAX * 2];
+    char sql[SQL_MAX];
+
+    mysql_real_escape_string(mysql, esc_from, from, strlen(from));
+    mysql_real_escape_string(mysql, esc_to, to, strlen(to));
+
+    snprintf(sql, SQL_MAX,
+             "UPDATE fs SET "
+             "path='%s' WHERE path='%s' AND (mode & %d) <> 0",
+             esc_to, esc_from, S_IFREG);
+
+    log_printf(LOG_D_SQL, "sql=%s\n", sql);
+
+    ret = mysql_query(mysql, sql);
+    if(ret){
+        log_printf(LOG_ERROR, "Error: mysql_query()\n");
+        log_printf(LOG_ERROR, "mysql_error: %s\n", mysql_error(mysql));
+        return -EIO;
+    }
+
+    /* This is temporary thing anyway so we can return whatever error we want. */
+    if (mysql_affected_rows(mysql) < 1)
+      return -EPERM;
+
+    return 0;
+}
+

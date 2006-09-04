@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Michal Ludvig <michal@logix.cz>
-  $Id: log.c,v 1.1 2006/09/04 11:43:29 ludvigm Exp $
+  $Id: log.c,v 1.2 2006/09/04 13:11:21 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -15,6 +15,7 @@
 #include <string.h>
 #include <time.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include "log.h"
 
@@ -43,18 +44,18 @@ int log_printf(enum log_types type, const char *logmsg, ...)
 	char buf[BUFSIZE];
 
 	if ((log_types_mask & type & LOG_MASK_MAJOR) == 0)
-	  return;
+	  return 0;
 
 	if ((type & LOG_DEBUG) && (log_debug_mask & type & LOG_MASK_MINOR) == 0)
-	  return;
+	  return 0;
 
 /*
  * Subtypes for INFO and ERROR are not yet defined
 	if ((type & LOG_INFO) && (log_info_mask & type & LOG_MASK_MINOR) == 0)
-	  return;
+	  return 0;
 
 	if ((type & LOG_ERROR) && (log_error_mask & type & LOG_MASK_MINOR) == 0)
-	  return;
+	  return 0;
 */
 
 	bzero(buf, BUFSIZE);

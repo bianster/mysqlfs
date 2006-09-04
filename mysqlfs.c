@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: mysqlfs.c,v 1.9 2006/09/04 11:43:29 ludvigm Exp $
+  $Id: mysqlfs.c,v 1.10 2006/09/04 13:11:21 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -42,15 +42,12 @@ static int mysqlfs_getattr(const char *path, struct stat *stbuf)
     MYSQL_CONN *conn;
 
     // This is called far too often
-    //log_printf(LOG_D_CALL, "mysqlfs_getattr(\"%s\")\n", path);
+    log_printf(LOG_D_CALL, "mysqlfs_getattr(\"%s\")\n", path);
 
     memset(stbuf, 0, sizeof(struct stat));
 
-    conn = mysqlfs_pool_get(mysql_pool);
-    if(!conn){
-        log_printf(LOG_ERROR, "Error: mysqlfs_pool_get()\n");
-        return -EMFILE;
-    }
+    if ((conn = mysqlfs_pool_get(mysql_pool)) == NULL)
+      return -EMFILE;
 
     ret = query_getattr(conn->mysql, path, stbuf);
     if(ret){
@@ -79,11 +76,8 @@ static int mysqlfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     log_printf(LOG_D_CALL, "mysqlfs_readdir(\"%s\")\n", path);
     log_printf(LOG_D_OTHER, "inode(\"%s\") = %d\n", path, fi->fh);
 
-    conn = mysqlfs_pool_get(mysql_pool);
-    if(!conn){
-        log_printf(LOG_ERROR, "Error: mysqlfs_pool_get()\n");
-        return -EMFILE;
-    }
+    if ((conn = mysqlfs_pool_get(mysql_pool)) == NULL)
+      return -EMFILE;
 
     inode = query_inode(conn->mysql, path);
     if(inode < 1){
@@ -124,11 +118,8 @@ static int mysqlfs_mknod(const char *path, mode_t mode, dev_t rdev)
     strncpy(dir_path, path, PATH_MAX);
     dirname(dir_path);
 
-    conn = mysqlfs_pool_get(mysql_pool);
-    if(!conn){
-        log_printf(LOG_ERROR, "Error: mysqlfs_pool_get()\n");
-        return -EMFILE;
-    }
+    if ((conn = mysqlfs_pool_get(mysql_pool)) == NULL)
+      return -EMFILE;
 
     inode = query_inode(conn->mysql, dir_path);
     if(inode < 0){
@@ -161,11 +152,8 @@ static int mysqlfs_mkdir(const char *path, mode_t mode){
     strncpy(dir_path, path, PATH_MAX);
     dirname(dir_path);
 
-    conn = mysqlfs_pool_get(mysql_pool);
-    if(!conn){
-        log_printf(LOG_ERROR, "Error: mysqlfs_pool_get()\n");
-        return -EMFILE;
-    }
+    if ((conn = mysqlfs_pool_get(mysql_pool)) == NULL)
+      return -EMFILE;
 
     inode = query_inode(conn->mysql, dir_path);
     if(inode < 1){
@@ -189,11 +177,9 @@ static int mysqlfs_unlink(const char *path){
     MYSQL_CONN *conn;
 
     log_printf(LOG_D_CALL, "mysqlfs_unlink(\"%s\")\n", path);
-    conn = mysqlfs_pool_get(mysql_pool);
-    if(!conn){
-        log_printf(LOG_ERROR, "Error: mysqlfs_pool_get()\n");
-        return -EMFILE;
-    }
+
+    if ((conn = mysqlfs_pool_get(mysql_pool)) == NULL)
+      return -EMFILE;
 
     ret = query_delete(conn->mysql, path);
     if(ret){
@@ -212,11 +198,9 @@ static int mysqlfs_rmdir(const char *path)
     MYSQL_CONN *conn;
 
     log_printf(LOG_D_CALL, "mysqlfs_rmdir(\"%s\")\n", path);
-    conn = mysqlfs_pool_get(mysql_pool);
-    if(!conn){
-        log_printf(LOG_ERROR, "Error: mysqlfs_pool_get()\n");
-        return -EMFILE;
-    }
+
+    if ((conn = mysqlfs_pool_get(mysql_pool)) == NULL)
+      return -EMFILE;
 
     ret = query_delete(conn->mysql, path);
     if(ret){
@@ -237,11 +221,8 @@ static int mysqlfs_chmod(const char* path, mode_t mode)
 
     log_printf(LOG_D_CALL, "mysql_chmod(\"%s\")\n", path);
 
-    conn = mysqlfs_pool_get(mysql_pool);
-    if(!conn){
-        log_printf(LOG_ERROR, "Error: mysqlfs_pool_get()\n");
-        return -EMFILE;
-    }
+    if ((conn = mysqlfs_pool_get(mysql_pool)) == NULL)
+      return -EMFILE;
 
     ret = query_chmod(conn->mysql, path, mode);
     if(ret){
@@ -262,11 +243,8 @@ static int mysqlfs_truncate(const char* path, off_t length)
 
     log_printf(LOG_D_CALL, "mysql_truncate(\"%s\"): len=%lld\n", path, length);
 
-    conn = mysqlfs_pool_get(mysql_pool);
-    if(!conn){
-        log_printf(LOG_ERROR, "Error: mysqlfs_pool_get()\n");
-        return -EMFILE;
-    }
+    if ((conn = mysqlfs_pool_get(mysql_pool)) == NULL)
+      return -EMFILE;
 
     ret = query_truncate(conn->mysql, path, length);
     if(ret){
@@ -288,11 +266,8 @@ static int mysqlfs_utime(const char *path, struct utimbuf *time)
 
     log_printf(LOG_D_CALL, "mysql_utime(\"%s\")\n", path);
 
-    conn = mysqlfs_pool_get(mysql_pool);
-    if(!conn){
-        log_printf(LOG_ERROR, "Error: mysqlfs_pool_get()\n");
-        return -EMFILE;
-    }
+    if ((conn = mysqlfs_pool_get(mysql_pool)) == NULL)
+      return -EMFILE;
 
     ret = query_utime(conn->mysql, path, time);
     if(ret){
@@ -313,11 +288,8 @@ static int mysqlfs_open(const char *path, struct fuse_file_info *fi)
 
     log_printf(LOG_D_CALL, "mysqlfs_open(\"%s\")\n", path);
 
-    conn = mysqlfs_pool_get(mysql_pool);    
-    if(!conn){
-        log_printf(LOG_ERROR, "Error: mysqlfs_pool_get()\n");
-        return -EMFILE;
-    }
+    if ((conn = mysqlfs_pool_get(mysql_pool)) == NULL)
+      return -EMFILE;
 
     inode = query_inode(conn->mysql, path);
     if(inode < 1){
@@ -344,11 +316,8 @@ static int mysqlfs_read(const char *path, char *buf, size_t size, off_t offset,
     log_printf(LOG_D_CALL, "mysqlfs_read(\"%s\")\n", path);
     log_printf(LOG_D_OTHER, "inode(\"%s\") = %d\n", path, fi->fh);
 
-    conn = mysqlfs_pool_get(mysql_pool);
-    if(!conn){
-        log_printf(LOG_ERROR, "Error: mysqlfs_pool_get()\n");
-        return -EMFILE;
-    }
+    if ((conn = mysqlfs_pool_get(mysql_pool)) == NULL)
+      return -EMFILE;
 
     ret = query_read(conn->mysql, path, buf, size, offset);
     mysqlfs_pool_return(mysql_pool, conn);
@@ -363,13 +332,9 @@ static int mysqlfs_write(const char *path, const char *buf, size_t size,
     MYSQL_CONN *conn;
 
     log_printf(LOG_D_CALL, "mysqlfs_write(\"%s\")\n", path);
-    log_printf(LOG_D_OTHER, "inode(\"%s\") = %d\n", path, fi->fh);
 
-    conn = mysqlfs_pool_get(mysql_pool);
-    if(!conn){
-        log_printf(LOG_ERROR, "Error: mysqlfs_pool_get()\n");
-        return -EMFILE;
-    }
+    if ((conn = mysqlfs_pool_get(mysql_pool)) == NULL)
+      return -EMFILE;
 
     ret = query_write(conn->mysql, path, buf, size, offset);
     mysqlfs_pool_return(mysql_pool, conn);
@@ -402,11 +367,8 @@ static int mysqlfs_symlink(const char *from, const char *to)
     if (ret < 0)
       return ret;
 
-    conn = mysqlfs_pool_get(mysql_pool);    
-    if(!conn){
-        log_printf(LOG_ERROR, "Error: mysqlfs_pool_get()\n");
-        return -EMFILE;
-    }
+    if ((conn = mysqlfs_pool_get(mysql_pool)) == NULL)
+      return -EMFILE;
 
     inode = query_inode(conn->mysql, to);
     if(inode < 1){
@@ -427,11 +389,10 @@ static int mysqlfs_readlink(const char *path, char *buf, size_t size)
     int ret;
     MYSQL_CONN *conn;
 
-    conn = mysqlfs_pool_get(mysql_pool);
-    if(!conn){
-        log_printf(LOG_ERROR, "Error: mysqlfs_pool_get()\n");
-        return -EMFILE;
-    }
+    log_printf(LOG_D_CALL, "%s(\"%s\")\n", __func__, path);
+
+    if ((conn = mysqlfs_pool_get(mysql_pool)) == NULL)
+      return -EMFILE;
 
     memset (buf, size, 0);
     ret = query_read(conn->mysql, path, buf, size, 0);
@@ -439,6 +400,23 @@ static int mysqlfs_readlink(const char *path, char *buf, size_t size)
     mysqlfs_pool_return(mysql_pool, conn);
 
     if (ret > 0) ret = 0;
+    return ret;
+}
+
+static int mysqlfs_rename(const char *from, const char *to)
+{
+    int ret;
+    MYSQL_CONN *conn;
+
+    log_printf(LOG_D_CALL, "%s(%s -> %s)\n", __func__, from, to);
+
+    if ((conn = mysqlfs_pool_get(mysql_pool)) == NULL)
+      return -EMFILE;
+
+    ret = query_rename(conn->mysql, from, to);
+
+    mysqlfs_pool_return(mysql_pool, conn);
+
     return ret;
 }
 
@@ -459,6 +437,7 @@ static struct fuse_operations mysqlfs_oper = {
     .release	= mysqlfs_release,
     .symlink	= mysqlfs_symlink,
     .readlink	= mysqlfs_readlink,
+    .rename	= mysqlfs_rename,
 };
 
 void usage(){
