@@ -1,7 +1,6 @@
 .deps
 .in
 .libs
-Makefile
 autom4te.cache
 autoscan.log
 config.h
@@ -9,9 +8,13 @@ config.log
 config.status
 config.guess
 config.sub
+config.h.in
+libtool
+ltmain.sh
 mysqlfs
 mysqlfs.log
 stamp-h1
+Makefile
 Makefile.in
 aclocal.m4
 configure
