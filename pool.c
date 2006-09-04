@@ -1,11 +1,15 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: pool.c,v 1.3 2006/07/23 17:18:22 cuspy Exp $
+  $Id: pool.c,v 1.4 2006/09/04 11:43:29 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
 */
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,6 +18,7 @@
 #include <pthread.h>
 
 #include "pool.h"
+#include "log.h"
 
 static pthread_mutex_t mysql_pool_mutex=PTHREAD_MUTEX_INITIALIZER;
 
@@ -47,7 +52,7 @@ MYSQL_POOL *mysqlfs_pool_init(MYSQLFS_OPT *opt)
     }
 
     for(i=0; i<pool->num; i++){
-        printf("connect: %d\n", i);
+        log_printf(LOG_DEBUG, "%s(): connect: %d\n", __func__, i);
         pool->conn[i].id = i;
         pool->use[i] = 0;
 
@@ -60,7 +65,8 @@ MYSQL_POOL *mysqlfs_pool_init(MYSQLFS_OPT *opt)
             pool->conn[i].mysql, opt->host, opt->user,
             opt->passwd, opt->db, 0, NULL, 0);
         if(!ret){
-            fprintf(stderr, "%s\n", mysql_error(pool->conn[i].mysql));
+            log_printf(LOG_ERROR, "ERROR: mysql_real_connect(): %s\n",
+		       mysql_error(pool->conn[i].mysql));
             return NULL;
         }
 
@@ -74,7 +80,7 @@ int mysqlfs_pool_free(MYSQL_POOL *pool)
     int i;
     
     for(i=0; i<pool->num; i++){
-        printf("disconnect: %d\n", i);
+        log_printf(LOG_DEBUG, "disconnect: %d\n", i);
         mysql_close(pool->conn[i].mysql);
     }
 
@@ -102,7 +108,7 @@ MYSQL_CONN *mysqlfs_pool_get(MYSQL_POOL *pool)
 
     for(i=0; i<pool->num; i++){
         if(!pool->use[i]){
-//            printf("get connecttion %d\n", i);
+//            log_printf("get connecttion %d\n", i);
             pool->use[i] = 1;
             conn = &(pool->conn[i]);
             break;
@@ -120,8 +126,8 @@ int mysqlfs_pool_return(MYSQL_POOL *pool, MYSQL_CONN *conn)
     pthread_mutex_lock(&mysql_pool_mutex);
     pool->use[conn->id] = 0;
 /*
-    printf("ping=%d\n", mysql_ping(conn->mysql));
-    printf("return %d\n", conn->id);
+    log_printf("ping=%d\n", mysql_ping(conn->mysql));
+    log_printf("return %d\n", conn->id);
 */
     pthread_mutex_unlock(&mysql_pool_mutex);
 
@@ -135,7 +141,7 @@ void mysqlfs_pool_print(MYSQL_POOL *pool)
     pthread_mutex_lock(&mysql_pool_mutex);
     
     for(i=0; i<pool->num; i++){
-        printf("pool->use[%d] = %d\n", i, pool->use[i]);
+        log_printf(LOG_DEBUG, "pool->use[%d] = %d\n", i, pool->use[i]);
     }
 
     pthread_mutex_unlock(&mysql_pool_mutex);

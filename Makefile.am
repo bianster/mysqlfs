@@ -1,5 +1,7 @@
-# $Id: Makefile.am,v 1.2 2006/07/23 17:33:20 cuspy Exp $
+# $Id: Makefile.am,v 1.3 2006/09/04 11:43:29 ludvigm Exp $
 
 bin_PROGRAMS = mysqlfs
-mysqlfs_SOURCES = mysqlfs.c mysqlfs.h query.c query.h pool.c pool.h
-mysqlfs_LDADD = 
+
+mysqlfs_SOURCES = mysqlfs.c query.c pool.c log.c
+
+noinst_HEADERS = mysqlfs.h query.h pool.h log.h
