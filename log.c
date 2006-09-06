@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Michal Ludvig <michal@logix.cz>
-  $Id: log.c,v 1.2 2006/09/04 13:11:21 ludvigm Exp $
+  $Id: log.c,v 1.3 2006/09/06 18:00:41 cuspy Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -69,8 +69,15 @@ FILE *log_init(const char *filename, int verbose)
 {
 	FILE    *f;
 
+    if(!strcmp(filename, "stdout")){
+        return stdout;
+    }else if(!strcmp(filename, "stderr")){
+        return stderr;
+    }
+
 	if (verbose)
 		printf("* Opening logfile '%s': ", filename);
+
 
 	if ((f = fopen(filename, "a+")) == NULL)
 	{
@@ -88,6 +95,11 @@ FILE *log_init(const char *filename, int verbose)
 
 void log_finish(FILE *f)
 {
+
+    if(f == stdout || f == stderr){
+        return;
+    }
+
 	fclose(f);
 }
 
