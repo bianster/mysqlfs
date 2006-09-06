@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: mysqlfs.c,v 1.10 2006/09/04 13:11:21 ludvigm Exp $
+  $Id: mysqlfs.c,v 1.11 2006/09/06 04:45:32 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -508,6 +508,8 @@ int main(int argc, char *argv[])
 #ifdef DEBUG
     mtrace();
 #endif
+
+    log_file = log_init("mysqlfs.log", 1);
 
     fuse_opt_parse(&args, &opt, NULL, mysqlfs_opt_proc);
 

@@ -1,3 +1,8 @@
+2006-09-06  Michal Ludvig  <michal@logix.cz>
+
+	* Fixed a few minor omissions. Now it should run again
+	  even on other machines than my one ;-)
+
 2006-09-04  Michal Ludvig  <michal@logix.cz>
 
 	* Fixed write() to actually do what a decent write() is

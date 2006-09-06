@@ -1,19 +1,22 @@
                       mysqlfs - MySQL FileSystem
 
-$Id: README,v 1.4 2006/07/22 17:46:59 cuspy Exp $
+$Id: README,v 1.5 2006/09/06 04:45:32 ludvigm Exp $
 
 mysqlfs is linux filesystem which store file in mysql database.
 
-* Requirement
+* Requirements
 
-  - mysql-client 4.0 or later
-  - mysql-server 4.0 or later
-  - fuse 2.2 or later
+  - mysql-client libraries 5.0 or later
+  - mysql-server 5.0 or later
+  - fuse 2.5 or later
 
 * Build
 
-  edit Makefile for your environment.
-  % make
+  If compiling from CVS run ./cvs-bootstrap first.
+
+  For both CVS and tarball version run:
+  $ ./configure
+  $ make
 
 * Usage
 
@@ -23,11 +26,11 @@ mysqlfs is linux filesystem which store file in mysql database.
    mysql> FLUSH PRIVILEGES;
 
 2. create table
-   % mysql -uroot -p mysqlfs < schema.sql
+   $ mysql -uroot -p mysqlfs < schema.sql
 
 3. mount database
-   % mkdir fs
-   % ./mysqlfs -ohost=host -ouser=user -opassword=pass -odatabase=mysqlfs fs
+   $ mkdir fs
+   $ ./mysqlfs -ohost=host -ouser=user -opassword=pass -odatabase=mysqlfs fs
 
 * Options
 
