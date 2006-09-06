@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: query.c,v 1.10 2006/09/04 13:11:21 ludvigm Exp $
+  $Id: query.c,v 1.11 2006/09/06 06:01:34 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -18,7 +18,7 @@
 #include <fcntl.h>
 #include <time.h>
 #include <libgen.h>
-#include <fuse.h>
+#include <fuse/fuse.h>
 #include <mysql/mysql.h>
 
 #include "mysqlfs.h"

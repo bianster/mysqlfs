@@ -1,5 +1,7 @@
 2006-09-06  Michal Ludvig  <michal@logix.cz>
 
+	* Check for MySQL version both in configure.in and
+	  when actually connecting the server.
 	* Fixed a few minor omissions. Now it should run again
 	  even on other machines than my one ;-)
 

@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: pool.c,v 1.4 2006/09/04 11:43:29 ludvigm Exp $
+  $Id: pool.c,v 1.5 2006/09/06 06:01:34 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -52,7 +52,6 @@ MYSQL_POOL *mysqlfs_pool_init(MYSQLFS_OPT *opt)
     }
 
     for(i=0; i<pool->num; i++){
-        log_printf(LOG_DEBUG, "%s(): connect: %d\n", __func__, i);
         pool->conn[i].id = i;
         pool->use[i] = 0;
 
@@ -60,7 +59,7 @@ MYSQL_POOL *mysqlfs_pool_init(MYSQLFS_OPT *opt)
         if(!pool->conn[i].mysql){
             break;
         }
-        
+
         ret = mysql_real_connect(
             pool->conn[i].mysql, opt->host, opt->user,
             opt->passwd, opt->db, 0, NULL, 0);
@@ -72,6 +71,19 @@ MYSQL_POOL *mysqlfs_pool_init(MYSQLFS_OPT *opt)
 
     }
 
+    /* Check the server version and some required records.  */
+    unsigned long mysql_version;
+    mysql_version = mysql_get_server_version(pool->conn[0].mysql);
+    if (mysql_version < MYSQL_MIN_VERSION) {
+    	fprintf(stderr, "Your server version is %s. "
+    		"Version %lu.%lu.%lu or higher is required.\n",
+    		mysql_get_server_info(pool->conn[0].mysql), 
+    		MYSQL_MIN_VERSION/10000L,
+    		(MYSQL_MIN_VERSION%10000L)/100,
+    		MYSQL_MIN_VERSION%100L);
+    	return NULL;
+    }
+        
     return pool;
 }
 
@@ -80,7 +92,6 @@ int mysqlfs_pool_free(MYSQL_POOL *pool)
     int i;
     
     for(i=0; i<pool->num; i++){
-        log_printf(LOG_DEBUG, "disconnect: %d\n", i);
         mysql_close(pool->conn[i].mysql);
     }
 

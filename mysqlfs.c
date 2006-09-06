@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: mysqlfs.c,v 1.11 2006/09/06 04:45:32 ludvigm Exp $
+  $Id: mysqlfs.c,v 1.12 2006/09/06 06:01:34 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -18,7 +18,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <libgen.h>
-#include <fuse.h>
+#include <fuse/fuse.h>
 #include <mysql/mysql.h>
 #include <pthread.h>
 #include <sys/stat.h>
@@ -521,7 +521,7 @@ int main(int argc, char *argv[])
 
     mysql_pool = mysqlfs_pool_init(&opt);
     if(!mysql_pool){
-        fprintf(stderr, "Error: mysqlfs_pool_init()\n");
+        log_printf(LOG_ERROR, "Error: mysqlfs_pool_init()\n");
         fuse_opt_free_args(&args);
         return EXIT_FAILURE;        
     }
