@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: pool.h,v 1.2 2006/09/06 18:00:41 cuspy Exp $
+  $Id: pool.h,v 1.3 2006/09/07 04:57:49 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -19,14 +19,17 @@ typedef struct{
     MYSQL_CONN *conn;
 }MYSQL_POOL;
 
-typedef struct{
+typedef struct {
     char *host;                 /* mysql host */
     char *user;                 /* mysql user */
     char *passwd;               /* mysql password */
     char *db;                   /* mysql database name */
+    unsigned int port;		/* mysql port */
+    char *socket;		/* mysql socket */
+    char *mycnf_group;		/* group in my.cnf to read */
     int connection;             /* connection pooling num */
     char *logfile;
-}MYSQLFS_OPT;
+} MYSQLFS_OPT;
 
 /* initalize and  connet all connection */
 MYSQL_POOL *mysqlfs_pool_init(MYSQLFS_OPT *opt);

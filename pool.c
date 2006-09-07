@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: pool.c,v 1.5 2006/09/06 06:01:34 ludvigm Exp $
+  $Id: pool.c,v 1.6 2006/09/07 04:57:49 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -60,9 +60,15 @@ MYSQL_POOL *mysqlfs_pool_init(MYSQLFS_OPT *opt)
             break;
         }
 
+	if (!opt->mycnf_group)
+	    opt->mycnf_group = "mysqlfs";
+
+	mysql_options(pool->conn[i].mysql, MYSQL_READ_DEFAULT_GROUP,
+		      opt->mycnf_group);
+
         ret = mysql_real_connect(
             pool->conn[i].mysql, opt->host, opt->user,
-            opt->passwd, opt->db, 0, NULL, 0);
+            opt->passwd, opt->db, opt->port, opt->socket, 0);
         if(!ret){
             log_printf(LOG_ERROR, "ERROR: mysql_real_connect(): %s\n",
 		       mysql_error(pool->conn[i].mysql));

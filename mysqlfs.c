@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: mysqlfs.c,v 1.13 2006/09/06 18:00:41 cuspy Exp $
+  $Id: mysqlfs.c,v 1.14 2006/09/07 04:57:49 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -483,6 +483,27 @@ static int mysqlfs_opt_proc(void *data, const char *arg, int key,
         return 0;
     }
 
+    if(!strncmp(arg, "port=", strlen("port="))){
+        str = strchr(arg, '=') + 1;
+	if (sscanf(str, "%u", &opt->port) != 1)
+	    return -1;
+        return 0;
+    }
+
+    if(!strncmp(arg, "socket=", strlen("socket="))){
+        str = strchr(arg, '=') + 1;
+        opt->socket = str;
+        return 0;
+    }
+
+    /* Read defaults from specified group in my.cnf
+     * Command line options still have precedence.  */
+    if(!strncmp(arg, "mycnf_group=", strlen("mycnf_group="))){
+        str = strchr(arg, '=') + 1;
+        opt->mycnf_group = str;
+        return 0;
+    }
+
     if(!strncmp(arg, "connection=", strlen("connection="))){
         str = strchr(arg, '=') + 1;
         opt->connection = atoi(str);
@@ -519,12 +540,6 @@ int main(int argc, char *argv[])
     fuse_opt_parse(&args, &opt, NULL, mysqlfs_opt_proc);
 
     log_file = log_init(opt.logfile, 1);
-
-    if(!opt.host || !opt.user || !opt.passwd || !opt.db){
-        usage();
-        fuse_opt_free_args(&args);
-        return EXIT_FAILURE;
-    }
 
     mysql_pool = mysqlfs_pool_init(&opt);
     if(!mysql_pool){
