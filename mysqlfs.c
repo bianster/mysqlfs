@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: mysqlfs.c,v 1.14 2006/09/07 04:57:49 ludvigm Exp $
+  $Id: mysqlfs.c,v 1.15 2006/09/07 04:59:44 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -446,9 +446,6 @@ void usage(){
             "-odatabase=database ./mountpoint\n");
 }
 
-/* MLUDVIG_BUILD ... temporary workaround, the following can't be
- * compiled on my workstation with libfuse 2.4.2-0ubuntu3 */
-#ifndef MLUDVIG_BUILD
 static int mysqlfs_opt_proc(void *data, const char *arg, int key,
                             struct fuse_args *outargs){
     MYSQLFS_OPT *opt = (MYSQLFS_OPT*)data;
@@ -560,37 +557,3 @@ int main(int argc, char *argv[])
   
     return EXIT_SUCCESS;
 }
-
-#else
-
-/*
- * main
- */
-int main(int argc, char *argv[])
-{
-    static MYSQLFS_OPT opt;
-
-    /* default param */
-    opt.connection = 5;
-
-    opt.host = "localhost";
-    opt.user = "fuse";
-    opt.passwd = "fuse";
-    opt.db = "mysqlfs";
-
-    log_file = log_init("mysqlfs.log", 1);
-
-    mysql_pool = mysqlfs_pool_init(&opt);
-    if(!mysql_pool){
-        log_printf(LOG_ERROR, "Error: mysqlfs_pool_init()\n");
-        return EXIT_FAILURE;        
-    }
-
-    fuse_main(argc, argv, &mysqlfs_oper);
-
-    mysqlfs_pool_print(mysql_pool);
-    mysqlfs_pool_free(mysql_pool);
-
-    return EXIT_SUCCESS;
-}
-#endif /* MLUDVIG_BUILD */
