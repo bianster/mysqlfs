@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Michal Ludvig <michal@logix.cz>
-  $Id: log.c,v 1.3 2006/09/06 18:00:41 cuspy Exp $
+  $Id: log.c,v 1.4 2006/09/13 02:58:23 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -22,7 +22,8 @@
 FILE *log_file;
 int log_types_mask = LOG_ERROR | LOG_INFO | LOG_DEBUG;
 //int log_types_mask = LOG_ERROR | LOG_INFO;
-int log_debug_mask = LOG_D_CALL | LOG_D_OTHER;
+//int log_debug_mask = LOG_D_CALL | LOG_D_SQL | LOG_D_OTHER;
+int log_debug_mask = -1;
 
 #define BUFSIZE 512
 

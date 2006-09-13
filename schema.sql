@@ -2,7 +2,7 @@
 --
 -- Host: localhost    Database: mysqlfs
 -- ------------------------------------------------------
--- Server version	5.0.22-Debian_0ubuntu6.06-log
+-- Server version	5.0.22-Debian_0ubuntu6.06.2-log
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -21,41 +21,82 @@
 
 DROP TABLE IF EXISTS `data`;
 CREATE TABLE `data` (
-  `id` bigint(20) NOT NULL,
+  `inode` bigint(20) NOT NULL,
   `data` longblob NOT NULL,
-  PRIMARY KEY  (`id`)
+  PRIMARY KEY  (`inode`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 --
--- Table structure for table `fs`
+-- Dumping data for table `data`
 --
 
-DROP TABLE IF EXISTS `fs`;
-CREATE TABLE `fs` (
-  `id` bigint(20) NOT NULL auto_increment,
-  `path` varchar(1000) default NULL,
+
+/*!40000 ALTER TABLE `data` DISABLE KEYS */;
+LOCK TABLES `data` WRITE;
+UNLOCK TABLES;
+/*!40000 ALTER TABLE `data` ENABLE KEYS */;
+
+--
+-- Table structure for table `inodes`
+--
+
+DROP TABLE IF EXISTS `inodes`;
+CREATE TABLE `inodes` (
+  `inode` bigint(20) NOT NULL,
+  `inuse` int(11) NOT NULL default '0',
+  `deleted` tinyint(4) NOT NULL default '0',
   `mode` int(11) default NULL,
-  `parent` int(11) default NULL,
+  `uid` int(10) unsigned NOT NULL default '0',
+  `gid` int(10) unsigned NOT NULL default '0',
   `atime` timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
   `mtime` timestamp NOT NULL default '0000-00-00 00:00:00',
   `ctime` timestamp NOT NULL default '0000-00-00 00:00:00',
   `size` bigint(20) NOT NULL default '0',
-  PRIMARY KEY  (`id`),
-  UNIQUE KEY `path` (`path`),
-  KEY `parent` (`parent`)
+  PRIMARY KEY  (`inode`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
-INSERT INTO `fs` (path, mode, parent) VALUES('/', 0x4000 | CONV('755', 8, 10), NULL);
+--
+-- Dumping data for table `inodes`
+--
 
-SET @OLD_SQL_MODE=@@SQL_MODE;
 
+/*!40000 ALTER TABLE `inodes` DISABLE KEYS */;
+LOCK TABLES `inodes` WRITE;
+INSERT INTO `inodes` VALUES (1,0,0,16895,0,0,'2006-09-12 05:25:03','0000-00-00 00:00:00','0000-00-00 00:00:00',0);
+UNLOCK TABLES;
+/*!40000 ALTER TABLE `inodes` ENABLE KEYS */;
+
+/*!50003 SET @OLD_SQL_MODE=@@SQL_MODE*/;
 DELIMITER ;;
-SET SESSION SQL_MODE="" ;;
-CREATE TRIGGER `drop_data` AFTER DELETE ON `fs` FOR EACH ROW BEGIN DELETE FROM data WHERE id=OLD.id; END ;;
+/*!50003 SET SESSION SQL_MODE="" */;;
+/*!50003 CREATE */ /*!50017 DEFINER=`root`@`localhost` */ /*!50003 TRIGGER `drop_data` AFTER DELETE ON `inodes` FOR EACH ROW BEGIN DELETE FROM data WHERE inode=OLD.inode; END */;;
 
 DELIMITER ;
-SET SESSION SQL_MODE=@OLD_SQL_MODE;
+/*!50003 SET SESSION SQL_MODE=@OLD_SQL_MODE */;
 
+--
+-- Table structure for table `tree`
+--
+
+DROP TABLE IF EXISTS `tree`;
+CREATE TABLE `tree` (
+  `inode` int(10) unsigned NOT NULL auto_increment,
+  `parent` int(10) unsigned default NULL,
+  `name` varchar(255) NOT NULL,
+  UNIQUE KEY `name` (`name`,`parent`),
+  KEY `inode` (`inode`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+
+--
+-- Dumping data for table `tree`
+--
+
+
+/*!40000 ALTER TABLE `tree` DISABLE KEYS */;
+LOCK TABLES `tree` WRITE;
+INSERT INTO `tree` VALUES (1,NULL,'/');
+UNLOCK TABLES;
+/*!40000 ALTER TABLE `tree` ENABLE KEYS */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

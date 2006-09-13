@@ -1,3 +1,24 @@
+2006-09-13  Michal Ludvig  <michal@logix.cz>
+
+	* Splitted table fs into a separate table for directory 
+	  tree and a table for inodes. This triggered radical 
+	  changes to most parts of the source. However now it's 
+	  possible to have hardlinks, delayed unlink and some other 
+	  sweeties difficult or impossible to implement with 
+	  the previous scheme.
+	* open() stores inode number in fi->fh and read(), write()
+	  release() and some other functions use that instead 
+	  of translating path name to inode every time.
+	* Updated schema.sql for the new DB layout. No transition
+	  tools from the previous schema are provided because I don't
+	  believe anyone has any valuable data in their FS ;-) If you
+	  do, tar them up, upgrade and untar back again.
+	* Started migrating the FS logic to mysqlfs.c. In the future
+	  query.c will only have query primitives and we'll perhaps 
+	  have query.c files for other DBs as well (Oracle,
+	  PostgreSQL, ...)
+	* Implemented link(), chown().
+
 2006-09-07  Michal Ludvig  <michal@logix.cz>
 
 	* Read default MySQL options from one of my.cnf files.
