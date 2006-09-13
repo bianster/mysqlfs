@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: pool.c,v 1.6 2006/09/07 04:57:49 ludvigm Exp $
+  $Id: pool.c,v 1.7 2006/09/13 10:54:37 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -134,18 +134,19 @@ MYSQL_CONN *mysqlfs_pool_get(MYSQL_POOL *pool)
 
     pthread_mutex_unlock(&mysql_pool_mutex);
 
+    log_printf(LOG_D_POOL, "%s() => %d\n", __func__, i >= pool->num ? -1 : i);
+    if (!conn)
+      mysqlfs_pool_print(pool);
+
     return conn;
 }
 
 int mysqlfs_pool_return(MYSQL_POOL *pool, MYSQL_CONN *conn)
 {
+    log_printf(LOG_D_POOL, "%s() <= %d\n", __func__, conn->id);
 
     pthread_mutex_lock(&mysql_pool_mutex);
     pool->use[conn->id] = 0;
-/*
-    log_printf("ping=%d\n", mysql_ping(conn->mysql));
-    log_printf("return %d\n", conn->id);
-*/
     pthread_mutex_unlock(&mysql_pool_mutex);
 
     return 0;
@@ -158,7 +159,7 @@ void mysqlfs_pool_print(MYSQL_POOL *pool)
     pthread_mutex_lock(&mysql_pool_mutex);
     
     for(i=0; i<pool->num; i++){
-        log_printf(LOG_DEBUG, "pool->use[%d] = %d\n", i, pool->use[i]);
+        log_printf(LOG_D_POOL, "pool->use[%d] = %d\n", i, pool->use[i]);
     }
 
     pthread_mutex_unlock(&mysql_pool_mutex);

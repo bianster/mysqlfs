@@ -17,6 +17,7 @@
 	  query.c will only have query primitives and we'll perhaps 
 	  have query.c files for other DBs as well (Oracle,
 	  PostgreSQL, ...)
+	* Increased default connection pool to 25 conns.
 	* Added some plans to TODO list.
 	* Implemented link(), chown().
 	* Fixed truncate().

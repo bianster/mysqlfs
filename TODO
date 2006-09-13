@@ -6,6 +6,9 @@
 		- delete data without existing inode
 		- synchronize inodes.size=data.LENGTH(data)
 
+* Implement more robust connection pool
+	- avoid -EMFILE when there are no more free connections
+
 * Implement some security 
 	- currently we allow all operations regardless on the privileges.
 

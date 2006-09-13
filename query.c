@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: query.c,v 1.13 2006/09/13 04:27:22 ludvigm Exp $
+  $Id: query.c,v 1.14 2006/09/13 10:54:37 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -137,8 +137,6 @@ int query_inode_full(MYSQL *mysql, const char *path, char *name, size_t name_len
     }
 
     if(mysql_num_rows(result) != 1){
-        log_printf(LOG_ERROR, "ERROR: mysql_num_rows()=%d\n",
-		   mysql_num_rows(result));
         mysql_free_result(result);
         return -ENOENT;
     }

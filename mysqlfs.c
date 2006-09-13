@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: mysqlfs.c,v 1.16 2006/09/13 02:58:23 ludvigm Exp $
+  $Id: mysqlfs.c,v 1.17 2006/09/13 10:54:37 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -82,7 +82,6 @@ static int mysqlfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     long inode;
 
     log_printf(LOG_D_CALL, "mysqlfs_readdir(\"%s\")\n", path);
-    log_printf(LOG_D_OTHER, "inode(\"%s\") = %d\n", path, fi->fh);
 
     if ((conn = mysqlfs_pool_get(mysql_pool)) == NULL)
       return -EMFILE;
@@ -95,8 +94,6 @@ static int mysqlfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     }
 
     
-    log_printf(LOG_D_OTHER, "inode2(\"%s\") = %d\n", path, inode);
-
     filler(buf, ".", NULL, 0);
     filler(buf, "..", NULL, 0);
 
@@ -194,8 +191,10 @@ static int mysqlfs_unlink(const char *path)
 
     ret = query_inode_full(conn->mysql, path, name, sizeof(name),
 			   &inode, &parent, &nlinks);
-    if (ret) {
-        log_printf(LOG_ERROR, "Error: query_inode_full()\n");
+    if (ret < 0) {
+        if (ret != -ENOENT)
+            log_printf(LOG_ERROR, "Error: query_inode_full(%s): %s\n",
+		       path, strerror(ret));
 	goto err_out;
     }
 
@@ -302,7 +301,7 @@ static int mysqlfs_truncate(const char* path, off_t length)
       return -EMFILE;
 
     ret = query_truncate(conn->mysql, path, length);
-    if(ret){
+    if (ret < 0) {
         log_printf(LOG_ERROR, "Error: query_length()\n");
         mysqlfs_pool_return(mysql_pool, conn);
         return -EIO;
@@ -310,7 +309,6 @@ static int mysqlfs_truncate(const char* path, off_t length)
 
     mysqlfs_pool_return(mysql_pool, conn);
 
-    return ret;
     return 0;
 }
 
@@ -332,7 +330,7 @@ static int mysqlfs_utime(const char *path, struct utimbuf *time)
     }
 
     ret = query_utime(conn->mysql, inode, time);
-    if(ret){
+    if (ret < 0) {
         log_printf(LOG_ERROR, "Error: query_utime()\n");
         mysqlfs_pool_return(mysql_pool, conn);
         return -EIO;
@@ -340,7 +338,7 @@ static int mysqlfs_utime(const char *path, struct utimbuf *time)
 
     mysqlfs_pool_return(mysql_pool, conn);
 
-    return ret;
+    return 0;
 }
 
 static int mysqlfs_open(const char *path, struct fuse_file_info *fi)
@@ -382,8 +380,7 @@ static int mysqlfs_read(const char *path, char *buf, size_t size, off_t offset,
     int ret;
     MYSQL_CONN *conn;
 
-    log_printf(LOG_D_CALL, "mysqlfs_read(\"%s\")\n", path);
-    log_printf(LOG_D_OTHER, "inode(\"%s\") = %d\n", path, fi->fh);
+    log_printf(LOG_D_CALL, "mysqlfs_read(\"%s\" %zu@%llu)\n", path, size, offset);
 
     if ((conn = mysqlfs_pool_get(mysql_pool)) == NULL)
       return -EMFILE;
@@ -400,7 +397,7 @@ static int mysqlfs_write(const char *path, const char *buf, size_t size,
     int ret;
     MYSQL_CONN *conn;
 
-    log_printf(LOG_D_CALL, "mysqlfs_write(\"%s\")\n", path);
+    log_printf(LOG_D_CALL, "mysqlfs_write(\"%s\" %zu@%lld)\n", path, size, offset);
 
     if ((conn = mysqlfs_pool_get(mysql_pool)) == NULL)
       return -EMFILE;
@@ -487,8 +484,9 @@ static int mysqlfs_symlink(const char *from, const char *to)
     int inode;
     MYSQL_CONN *conn;
 
+    log_printf(LOG_D_CALL, "%s(\"%s\" -> \"%s\")\n", __func__, from, to);
+
     ret = mysqlfs_mknod(to, S_IFLNK | 0755, 0);
-    log_printf(LOG_DEBUG, "symlink(%s, %s): mknod=%d\n", from, to, ret);
     if (ret < 0)
       return ret;
 
@@ -502,8 +500,8 @@ static int mysqlfs_symlink(const char *from, const char *to)
     }
 
     ret = query_write(conn->mysql, inode, from, strlen(from), 0);
-    if (ret > 0)
-      ret = 0;
+    if (ret > 0) ret = 0;
+
     mysqlfs_pool_return(mysql_pool, conn);
 
     return ret;
@@ -526,7 +524,7 @@ static int mysqlfs_readlink(const char *path, char *buf, size_t size)
         return -ENOENT;
     }
 
-    memset (buf, size, 0);
+    memset (buf, 0, size);
     ret = query_read(conn->mysql, inode, buf, size, 0);
     log_printf(LOG_DEBUG, "readlink(%s): %s [%zd -> %d]\n", path, buf, size, ret);
     mysqlfs_pool_return(mysql_pool, conn);
@@ -663,7 +661,7 @@ int main(int argc, char *argv[])
     static MYSQLFS_OPT opt;
 
     /* default param */
-    opt.connection = 5;
+    opt.connection = 25;
     opt.logfile = "mysqlfs.log";
 
 #ifdef DEBUG

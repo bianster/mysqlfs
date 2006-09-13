@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Michal Ludvig <michal@logix.cz>
-  $Id: log.h,v 1.1 2006/09/04 11:43:29 ludvigm Exp $
+  $Id: log.h,v 1.2 2006/09/13 10:54:37 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -19,6 +19,7 @@ enum log_types {
   LOG_D_OTHER	= 0x0100 | LOG_DEBUG,
   LOG_D_SQL	= 0x0200 | LOG_DEBUG,
   LOG_D_CALL	= 0x0400 | LOG_DEBUG,
+  LOG_D_POOL	= 0x0800 | LOG_DEBUG,
   
   LOG_MASK_MAJOR	= 0x000F,
   LOG_MASK_MINOR	= 0xFF00,
