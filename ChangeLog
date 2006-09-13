@@ -17,7 +17,9 @@
 	  query.c will only have query primitives and we'll perhaps 
 	  have query.c files for other DBs as well (Oracle,
 	  PostgreSQL, ...)
+	* Added some plans to TODO list.
 	* Implemented link(), chown().
+	* Fixed truncate().
 
 2006-09-07  Michal Ludvig  <michal@logix.cz>
 

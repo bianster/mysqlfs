@@ -1,6 +1,16 @@
+* Implement basic FSCK and root inode population on startup
+	- FSCK should:
+		- delete inodes with deleted==1
+		- delete direntries without corresponding inode
+		- set inuse=0 for all inodes
+		- delete data without existing inode
+		- synchronize inodes.size=data.LENGTH(data)
+
 * Implement some security 
 	- currently we allow all operations regardless on the privileges.
+
 * Implement path->inode cache and inode->stat cache
 	- getattr will greatly benefit from this
+
 * Implement file buffering
 	- running query after every write() is insane

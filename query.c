@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: query.c,v 1.12 2006/09/13 02:58:23 ludvigm Exp $
+  $Id: query.c,v 1.13 2006/09/13 04:27:22 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -185,8 +185,8 @@ int query_truncate(MYSQL *mysql, const char *path, off_t length)
       return inode;
 
     snprintf(sql, SQL_MAX,
-             "UPDATE inodes LEFT JOIN data ON inodes.inode = data.inode SET data=RPAD(data, %lld, '\\0') WHERE inodes.inode=%ld",
-             length, inode);
+             "UPDATE inodes LEFT JOIN data ON inodes.inode = data.inode SET data=RPAD(data, %lld, '\\0'), size=%lld WHERE inodes.inode=%ld",
+             length, length, inode);
     log_printf(LOG_D_SQL, "sql=%s\n", sql);
 
     ret = mysql_query(mysql, sql);
@@ -354,10 +354,19 @@ int query_chown(MYSQL *mysql, long inode, uid_t uid, gid_t gid)
 {
     int ret;
     char sql[SQL_MAX];
+    size_t index;
 
-    snprintf(sql, SQL_MAX,
-             "UPDATE inodes SET uid=%u, gid=%u WHERE inode=%ld",
-             uid, gid, inode);
+    index = snprintf(sql, SQL_MAX, "UPDATE inodes SET ");
+    if (uid != (uid_t)-1)
+    	index += snprintf(sql + index, SQL_MAX - index, 
+			  "uid=%d ", uid);
+    if (gid != (gid_t)-1)
+    	index += snprintf(sql + index, SQL_MAX - index,
+			  "%s gid=%d ", 
+			  /* Insert comma if this is a second argument */
+			  (uid != (uid_t)-1) ? "," : "",
+			  gid);
+    snprintf(sql + index, SQL_MAX - index, "WHERE inode=%ld", inode);
 
     log_printf(LOG_D_SQL, "sql=%s\n", sql);
 
