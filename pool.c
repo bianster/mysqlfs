@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: pool.c,v 1.7 2006/09/13 10:54:37 ludvigm Exp $
+  $Id: pool.c,v 1.8 2006/09/15 04:10:43 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -27,6 +27,7 @@ MYSQL_POOL *mysqlfs_pool_init(MYSQLFS_OPT *opt)
     int i;
     MYSQL_POOL *pool;
     MYSQL *ret;
+    my_bool reconnect = 1;
 
     pool = malloc(sizeof(MYSQL_POOL));
     if(!pool){
@@ -75,6 +76,9 @@ MYSQL_POOL *mysqlfs_pool_init(MYSQLFS_OPT *opt)
             return NULL;
         }
 
+	/* Reconnect must be set *after* real_connect()! */
+	mysql_options(pool->conn[i].mysql, MYSQL_OPT_RECONNECT,
+		      (char*)&reconnect);
     }
 
     /* Check the server version and some required records.  */

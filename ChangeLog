@@ -1,3 +1,7 @@
+2006-09-15  Michal Ludvig  <michal@logix.cz>
+
+	* Enable reconnect when mysql connection gone away.
+
 2006-09-13  Michal Ludvig  <michal@logix.cz>
 
 	* Splitted table fs into a separate table for directory 
