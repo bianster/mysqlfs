@@ -1,47 +1,33 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: pool.h,v 1.3 2006/09/07 04:57:49 ludvigm Exp $
+  $Id: pool.h,v 1.4 2006/09/17 11:09:32 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
 */
 
-typedef struct{
-    int id;
-    MYSQL *mysql;
-}MYSQL_CONN;
-
-typedef struct{
-    int num;
-    MYSQL *mysql;
-    int *use;
-    MYSQL_CONN *conn;
-}MYSQL_POOL;
-
-typedef struct {
-    char *host;                 /* mysql host */
-    char *user;                 /* mysql user */
-    char *passwd;               /* mysql password */
-    char *db;                   /* mysql database name */
-    unsigned int port;		/* mysql port */
-    char *socket;		/* mysql socket */
-    char *mycnf_group;		/* group in my.cnf to read */
-    int connection;             /* connection pooling num */
+struct mysqlfs_opt {
+    char *host;                 /* MySQL host */
+    char *user;                 /* MySQL user */
+    char *passwd;               /* MySQL password */
+    char *db;                   /* MySQL database name */
+    unsigned int port;		/* MySQL port */
+    char *socket;		/* MySQL socket */
+    char *mycnf_group;		/* Group in my.cnf to read defaults from */
+    unsigned int init_conns;	/* Number of DB connections to init on startup */
+    unsigned int max_idling_conns;	/* Maximum number of idling DB connections */
     char *logfile;
-} MYSQLFS_OPT;
+};
 
-/* initalize and  connet all connection */
-MYSQL_POOL *mysqlfs_pool_init(MYSQLFS_OPT *opt);
+/* Initalize pool and preallocate connections */
+int pool_init(struct mysqlfs_opt *opt);
 
-/* disconnect all connection and free memory */
-int mysqlfs_pool_free(MYSQL_POOL *pool);
+/* Close all connections and cleanup pool */
+void pool_cleanup();
 
-/* get pooling connection */
-MYSQL_CONN *mysqlfs_pool_get(MYSQL_POOL *pool);
+/* Get DB connection from pool */
+void *pool_get();
 
-/* return pooling connection */
-int mysqlfs_pool_return(MYSQL_POOL *pool, MYSQL_CONN *conn);
-
-/* debug function */
-void mysqlfs_pool_print(MYSQL_POOL *pool);
+/* Put DB connection back to the pool */
+void pool_put(void *conn);

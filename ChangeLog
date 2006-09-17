@@ -1,3 +1,19 @@
+2006-09-17  Michal Ludvig  <michal@logix.cz>
+
+	* pool.c: Rewritten from scratch. It doesn't have a limit
+	  of open connections anymore and instead creates new ones
+	  on request. Returned connections are not immediately 
+	  closed, instead put into a LIFO-type stack and reused
+	  later. Maximum number of connections idling on the stack 
+	  can be set as well as the initial number of connections
+	  opened on start.
+	  This rewrite triggered search-and-replace changes
+	  in mysqlfs.c (no more MYSQL_CONN type). Instead I return
+	  the connection itself (MYSQL*) though typed as (void*) -  
+	  probably not the best choice. The intent was to
+	  prepare for support of other DBs. It works for now but 
+	  I'll likely rewrite improve this later ;-) 
+	  
 2006-09-15  Michal Ludvig  <michal@logix.cz>
 
 	* Enable reconnect when mysql connection gone away.

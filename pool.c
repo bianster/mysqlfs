@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
-  Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: pool.c,v 1.8 2006/09/15 04:10:43 ludvigm Exp $
+  Copyright (C) 2006 Michal Ludvig <michal@logix.cz>
+  $Id: pool.c,v 1.9 2006/09/17 11:09:32 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -14,159 +14,190 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <mysql/mysql.h>
+#include <errno.h>
 #include <pthread.h>
+
+#include <mysql/mysql.h>
 
 #include "pool.h"
 #include "log.h"
 
-static pthread_mutex_t mysql_pool_mutex=PTHREAD_MUTEX_INITIALIZER;
+struct mysqlfs_opt *opt;
 
-MYSQL_POOL *mysqlfs_pool_init(MYSQLFS_OPT *opt)
+struct pool_lifo {
+    struct pool_lifo	*next;
+    void		*conn;
+};
+
+/* We have only one pool -> use global variables. */
+struct pool_lifo *lifo_pool = NULL;
+struct pool_lifo *lifo_unused = NULL;
+static pthread_mutex_t lifo_mutex = PTHREAD_MUTEX_INITIALIZER;
+unsigned int lifo_unused_cnt = 0;
+unsigned int lifo_pool_cnt = 0;
+
+/*********************************
+ * Pool MySQL-specific functions *
+ *********************************/
+
+static MYSQL *pool_open_mysql_connection()
 {
-    int i;
-    MYSQL_POOL *pool;
-    MYSQL *ret;
+    MYSQL *mysql;
     my_bool reconnect = 1;
 
-    pool = malloc(sizeof(MYSQL_POOL));
-    if(!pool){
+    mysql = mysql_init(NULL);
+    if (!mysql) {
+	log_printf(LOG_ERROR, "%s(): %s\n", __func__, strerror(ENOMEM));
         return NULL;
     }
 
-    pool->num = opt->connection;
-    if(pool->num < 0){
+    if (opt->mycnf_group)
+	mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, opt->mycnf_group);
+
+    if (! mysql_real_connect(mysql, opt->host, opt->user,
+			     opt->passwd, opt->db,
+			     opt->port, opt->socket, 0)) {
+        log_printf(LOG_ERROR, "ERROR: mysql_real_connect(): %s\n",
+		   mysql_error(mysql));
+	mysql_close(mysql);
         return NULL;
     }
 
-    pool->use = malloc(sizeof(int) * pool->num);
-    if(!pool->use){
-        free(pool);
-        return NULL;
-    }
+    /* Reconnect must be set *after* real_connect()! */
+    mysql_options(mysql, MYSQL_OPT_RECONNECT, (char*)&reconnect);
 
-    pool->conn = malloc(sizeof(MYSQL_CONN) * pool->num);
-    if(!pool->conn){
-        free(pool->use);
-        free(pool);
-        return NULL;
-    }
-
-    for(i=0; i<pool->num; i++){
-        pool->conn[i].id = i;
-        pool->use[i] = 0;
-
-        pool->conn[i].mysql = mysql_init(NULL);
-        if(!pool->conn[i].mysql){
-            break;
-        }
-
-	if (!opt->mycnf_group)
-	    opt->mycnf_group = "mysqlfs";
-
-	mysql_options(pool->conn[i].mysql, MYSQL_READ_DEFAULT_GROUP,
-		      opt->mycnf_group);
-
-        ret = mysql_real_connect(
-            pool->conn[i].mysql, opt->host, opt->user,
-            opt->passwd, opt->db, opt->port, opt->socket, 0);
-        if(!ret){
-            log_printf(LOG_ERROR, "ERROR: mysql_real_connect(): %s\n",
-		       mysql_error(pool->conn[i].mysql));
-            return NULL;
-        }
-
-	/* Reconnect must be set *after* real_connect()! */
-	mysql_options(pool->conn[i].mysql, MYSQL_OPT_RECONNECT,
-		      (char*)&reconnect);
-    }
-
-    /* Check the server version and some required records.  */
-    unsigned long mysql_version;
-    mysql_version = mysql_get_server_version(pool->conn[0].mysql);
-    if (mysql_version < MYSQL_MIN_VERSION) {
-    	fprintf(stderr, "Your server version is %s. "
-    		"Version %lu.%lu.%lu or higher is required.\n",
-    		mysql_get_server_info(pool->conn[0].mysql), 
-    		MYSQL_MIN_VERSION/10000L,
-    		(MYSQL_MIN_VERSION%10000L)/100,
-    		MYSQL_MIN_VERSION%100L);
-    	return NULL;
-    }
-        
-    return pool;
+    return mysql;
 }
 
-int mysqlfs_pool_free(MYSQL_POOL *pool)
+static void pool_close_mysql_connection(MYSQL *mysql)
 {
-    int i;
-    
-    for(i=0; i<pool->num; i++){
-        mysql_close(pool->conn[i].mysql);
-    }
+    if (mysql)
+        mysql_close(mysql);
+}
 
-    if(pool->conn){
-        free(pool->conn);
-    }
+/******************************************
+ * Pool DB-independent (almost) functions *
+ ******************************************/
 
-    if(pool->use){
-        free(pool->use);
-    }
+static inline int lifo_put(void *conn)
+{
+    struct pool_lifo *ent;
 
-    if(pool){
-        free(pool);
+    log_printf(LOG_D_POOL, "%s() <= %p\n", __func__, conn);
+    pthread_mutex_lock(&lifo_mutex);
+    if (lifo_unused) {
+	ent = lifo_unused;
+	lifo_unused = ent->next;
+	lifo_unused_cnt--;
+    } else {
+	ent = calloc(1, sizeof(struct pool_lifo));
+	if (!ent) {
+	    pthread_mutex_unlock(&lifo_mutex);
+	    return -ENOMEM;
+	}
     }
+    ent->conn = conn;
+    ent->next = lifo_pool;
+    lifo_pool = ent;
+    lifo_pool_cnt++;
+    pthread_mutex_unlock(&lifo_mutex);
 
     return 0;
 }
 
-MYSQL_CONN *mysqlfs_pool_get(MYSQL_POOL *pool)
+static inline void *lifo_get()
 {
-    int i;
-    MYSQL_CONN *conn = NULL;
+    struct pool_lifo *ent;
+    void *conn;
 
-    pthread_mutex_lock(&mysql_pool_mutex);
-
-    for(i=0; i<pool->num; i++){
-        if(!pool->use[i]){
-//            log_printf("get connecttion %d\n", i);
-            pool->use[i] = 1;
-            conn = &(pool->conn[i]);
-            break;
-        }
-    }
-
-    pthread_mutex_unlock(&mysql_pool_mutex);
-
-    log_printf(LOG_D_POOL, "%s() => %d\n", __func__, i >= pool->num ? -1 : i);
-    if (!conn)
-      mysqlfs_pool_print(pool);
+    pthread_mutex_lock(&lifo_mutex);
+    if (lifo_pool) {
+	ent = lifo_pool;
+	conn = ent->conn;
+	lifo_pool = ent->next;
+	lifo_pool_cnt--;
+	ent->next = lifo_unused;
+	ent->conn = NULL;
+	lifo_unused = ent;
+	lifo_unused_cnt++;
+    } else
+	conn = NULL;
+    pthread_mutex_unlock(&lifo_mutex);
 
     return conn;
 }
 
-int mysqlfs_pool_return(MYSQL_POOL *pool, MYSQL_CONN *conn)
+int pool_init(struct mysqlfs_opt *opt_arg)
 {
-    log_printf(LOG_D_POOL, "%s() <= %d\n", __func__, conn->id);
+    int i;
 
-    pthread_mutex_lock(&mysql_pool_mutex);
-    pool->use[conn->id] = 0;
-    pthread_mutex_unlock(&mysql_pool_mutex);
+    log_printf(LOG_D_POOL, "%s()\n", __func__);
+    opt = opt_arg;
+
+    for (i = 0; i < opt->init_conns; i++) {
+	void *conn = pool_open_mysql_connection();
+	lifo_put(conn);
+    }
+
+    /* The following check should go to MySQL-specific section
+     * so we can later add a whole new DB support without too
+     * much trouble. But for now ... leave it here ... */
+    MYSQL *mysql = pool_get();
+    if (!mysql) {
+	log_printf(LOG_ERROR, "Failed to connect MySQL server.\n");
+	return -1;
+    }
+
+    /* Check the server version and some required records.  */
+    unsigned long mysql_version;
+    mysql_version = mysql_get_server_version(mysql);
+    if (mysql_version < MYSQL_MIN_VERSION) {
+    	log_printf(LOG_ERROR, "Your server version is %s. "
+    		   "Version %lu.%lu.%lu or higher is required.\n",
+    		   mysql_get_server_info(mysql), 
+    		   MYSQL_MIN_VERSION/10000L,
+    		   (MYSQL_MIN_VERSION%10000L)/100,
+    		   MYSQL_MIN_VERSION%100L);
+	pool_put(mysql);
+    	return -ENOENT;
+    }
+    pool_put(mysql);
 
     return 0;
 }
 
-void mysqlfs_pool_print(MYSQL_POOL *pool)
+void pool_cleanup()
 {
-    int i;
-
-    pthread_mutex_lock(&mysql_pool_mutex);
-    
-    for(i=0; i<pool->num; i++){
-        log_printf(LOG_D_POOL, "pool->use[%d] = %d\n", i, pool->use[i]);
+    void *conn;
+    log_printf(LOG_D_POOL, "%s()...\n", __func__);
+    while ((conn = lifo_get())) {
+	log_printf(LOG_D_POOL, "%s(): closing conn=%p\n", __func__, conn);
+	pool_close_mysql_connection(conn);
     }
+}
 
-    pthread_mutex_unlock(&mysql_pool_mutex);
+void *pool_get()
+{
+    void *conn = lifo_get();
+    if (!conn) {
+	conn = pool_open_mysql_connection();
+	log_printf(LOG_D_POOL, "%s(): Allocated new connection = %p\n", __func__, conn);
+    } else
+	log_printf(LOG_D_POOL, "%s(): Reused connection = %p\n", __func__, conn);
 
-    return;
+    return conn;
+}
+
+void pool_put(void *conn)
+{
+    log_printf(LOG_D_POOL, "%s(%p)\n", __func__, conn);
+
+    /* This doesn't have to be mutex-protected.
+     * If we close more conns or don't close some nothing
+     * too bad happens. */
+    if (lifo_pool_cnt >= opt->max_idling_conns)
+	pool_close_mysql_connection(conn);
+    else
+	if (lifo_put(conn) < 0)
+	    pool_close_mysql_connection(conn);
 }
