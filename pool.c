@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Michal Ludvig <michal@logix.cz>
-  $Id: pool.c,v 1.9 2006/09/17 11:09:32 ludvigm Exp $
+  $Id: pool.c,v 1.10 2006/09/23 09:29:44 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -17,8 +17,10 @@
 #include <errno.h>
 #include <pthread.h>
 
+#include <fuse/fuse.h>
 #include <mysql/mysql.h>
 
+#include "query.h"
 #include "pool.h"
 #include "log.h"
 
@@ -75,6 +77,38 @@ static void pool_close_mysql_connection(MYSQL *mysql)
         mysql_close(mysql);
 }
 
+static int pool_check_mysql_setup(MYSQL *mysql)
+{
+    int ret = 0;
+
+    /* Check the server version.  */
+    unsigned long mysql_version;
+    mysql_version = mysql_get_server_version(mysql);
+    if (mysql_version < MYSQL_MIN_VERSION) {
+    	log_printf(LOG_ERROR, "Your server version is %s. "
+    		   "Version %lu.%lu.%lu or higher is required.\n",
+    		   mysql_get_server_info(mysql), 
+    		   MYSQL_MIN_VERSION/10000L,
+    		   (MYSQL_MIN_VERSION%10000L)/100,
+    		   MYSQL_MIN_VERSION%100L);
+    	ret = -ENOENT;
+	goto out;
+    }
+
+    /* Create root directory if it doesn't exist. */
+    ret = query_inode_full(mysql, "/", NULL, 0, NULL, NULL, NULL);
+    if (ret == -ENOENT)
+	ret = query_mkdir(mysql, "/", 0755, 0);
+    if (ret < 0)
+	goto out;
+
+    /* Cleanup. */
+    ret = query_fsck(mysql);
+
+out:
+    return ret;
+}
+
 /******************************************
  * Pool DB-independent (almost) functions *
  ******************************************/
@@ -129,7 +163,7 @@ static inline void *lifo_get()
 
 int pool_init(struct mysqlfs_opt *opt_arg)
 {
-    int i;
+    int i, ret;
 
     log_printf(LOG_D_POOL, "%s()\n", __func__);
     opt = opt_arg;
@@ -148,22 +182,11 @@ int pool_init(struct mysqlfs_opt *opt_arg)
 	return -1;
     }
 
-    /* Check the server version and some required records.  */
-    unsigned long mysql_version;
-    mysql_version = mysql_get_server_version(mysql);
-    if (mysql_version < MYSQL_MIN_VERSION) {
-    	log_printf(LOG_ERROR, "Your server version is %s. "
-    		   "Version %lu.%lu.%lu or higher is required.\n",
-    		   mysql_get_server_info(mysql), 
-    		   MYSQL_MIN_VERSION/10000L,
-    		   (MYSQL_MIN_VERSION%10000L)/100,
-    		   MYSQL_MIN_VERSION%100L);
-	pool_put(mysql);
-    	return -ENOENT;
-    }
+    ret = pool_check_mysql_setup(mysql);
+
     pool_put(mysql);
 
-    return 0;
+    return ret;
 }
 
 void pool_cleanup()

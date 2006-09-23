@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: query.c,v 1.14 2006/09/13 10:54:37 ludvigm Exp $
+  $Id: query.c,v 1.15 2006/09/23 09:29:44 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -40,7 +40,7 @@ int query_getattr(MYSQL *mysql, const char *path, struct stat *stbuf)
       return ret;
 
     snprintf(sql, SQL_MAX,
-             "SELECT inode, mode, uid, gid, UNIX_TIMESTAMP(atime), UNIX_TIMESTAMP(mtime) "
+             "SELECT inode, mode, uid, gid, atime, mtime "
              "FROM inodes WHERE inode=%ld",
              inode);
 
@@ -248,25 +248,36 @@ long query_mknod(MYSQL *mysql, const char *path, mode_t mode, dev_t rdev,
     long new_inode_number = 0;
     char *name, esc_name[PATH_MAX * 2];
 
-    name = strrchr(path, '/');
-    if (!name || *++name == '\0')
-        return -ENOENT;
+    if (path[0] == '/' && path[1] == '\0') {
+        snprintf(sql, SQL_MAX,
+                 "INSERT INTO tree (name, parent) VALUES ('/', NULL)");
 
-    mysql_real_escape_string(mysql, esc_name, name, strlen(name));
-    snprintf(sql, SQL_MAX,
-             "INSERT INTO tree (name, parent) VALUES ('%s', %ld)",
-             esc_name, parent);
+        log_printf(LOG_D_SQL, "sql=%s\n", sql);
+        ret = mysql_query(mysql, sql);
+        if(ret)
+          goto err_out;
+    } else {
+        name = strrchr(path, '/');
+        if (!name || *++name == '\0')
+            return -ENOENT;
 
-    log_printf(LOG_D_SQL, "sql=%s\n", sql);
-    ret = mysql_query(mysql, sql);
-    if(ret)
-      goto err_out;
+        mysql_real_escape_string(mysql, esc_name, name, strlen(name));
+        snprintf(sql, SQL_MAX,
+                 "INSERT INTO tree (name, parent) VALUES ('%s', %ld)",
+                 esc_name, parent);
+
+        log_printf(LOG_D_SQL, "sql=%s\n", sql);
+        ret = mysql_query(mysql, sql);
+        if(ret)
+          goto err_out;
+    }
 
     new_inode_number = mysql_insert_id(mysql);
 
     snprintf(sql, SQL_MAX,
              "INSERT INTO inodes(inode, mode, uid, gid, atime, ctime, mtime)"
-             "VALUES(%ld, %d, %d, %d, NOW(), NOW(), NOW())",
+             "VALUES(%ld, %d, %d, %d, UNIX_TIMESTAMP(NOW()), "
+	            "UNIX_TIMESTAMP(NOW()), UNIX_TIMESTAMP(NOW()))",
              new_inode_number, mode,
 	     fuse_get_context()->uid, fuse_get_context()->gid);
 
@@ -384,7 +395,7 @@ int query_utime(MYSQL *mysql, long inode, struct utimbuf *time)
 
     snprintf(sql, SQL_MAX,
              "UPDATE inodes "
-             "SET atime=FROM_UNIXTIME(%ld), mtime=FROM_UNIXTIME(%ld) "
+             "SET atime=%ld, mtime=%ld "
              "WHERE inode=%lu",
              time->actime, time->modtime, inode);
 
@@ -694,3 +705,8 @@ int query_set_deleted(MYSQL *mysql, long inode)
     return 0;
 }
 
+int query_fsck(MYSQL *mysql)
+{
+    // See TODO file for what should be here...
+    return 0;
+}

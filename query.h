@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: query.h,v 1.7 2006/09/13 02:58:23 ludvigm Exp $
+  $Id: query.h,v 1.8 2006/09/23 09:29:44 ludvigm Exp $
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -35,3 +35,4 @@ int query_inuse_inc(MYSQL *mysql, long inode, int increment);
 int query_set_deleted(MYSQL *mysql, long inode);
 int query_purge_deleted(MYSQL *mysql, long inode);
 
+int query_fsck(MYSQL *mysql);

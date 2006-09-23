@@ -2,7 +2,7 @@
 --
 -- Host: localhost    Database: mysqlfs
 -- ------------------------------------------------------
--- Server version	5.0.22-Debian_0ubuntu6.06.2-log
+-- Server version	5.0.22-Debian_0ubuntu6.06.2
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -24,17 +24,7 @@ CREATE TABLE `data` (
   `inode` bigint(20) NOT NULL,
   `data` longblob NOT NULL,
   PRIMARY KEY  (`inode`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-
---
--- Dumping data for table `data`
---
-
-
-/*!40000 ALTER TABLE `data` DISABLE KEYS */;
-LOCK TABLES `data` WRITE;
-UNLOCK TABLES;
-/*!40000 ALTER TABLE `data` ENABLE KEYS */;
+) ENGINE=MyISAM DEFAULT CHARSET=binary;
 
 --
 -- Table structure for table `inodes`
@@ -45,26 +35,16 @@ CREATE TABLE `inodes` (
   `inode` bigint(20) NOT NULL,
   `inuse` int(11) NOT NULL default '0',
   `deleted` tinyint(4) NOT NULL default '0',
-  `mode` int(11) default NULL,
+  `mode` int(11) NOT NULL default '0',
   `uid` int(10) unsigned NOT NULL default '0',
   `gid` int(10) unsigned NOT NULL default '0',
-  `atime` timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
-  `mtime` timestamp NOT NULL default '0000-00-00 00:00:00',
-  `ctime` timestamp NOT NULL default '0000-00-00 00:00:00',
+  `atime` int(10) unsigned NOT NULL default '0',
+  `mtime` int(10) unsigned NOT NULL default '0',
+  `ctime` int(10) unsigned NOT NULL default '0',
   `size` bigint(20) NOT NULL default '0',
-  PRIMARY KEY  (`inode`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-
---
--- Dumping data for table `inodes`
---
-
-
-/*!40000 ALTER TABLE `inodes` DISABLE KEYS */;
-LOCK TABLES `inodes` WRITE;
-INSERT INTO `inodes` VALUES (1,0,0,16895,0,0,'2006-09-12 05:25:03','0000-00-00 00:00:00','0000-00-00 00:00:00',0);
-UNLOCK TABLES;
-/*!40000 ALTER TABLE `inodes` ENABLE KEYS */;
+  PRIMARY KEY  (`inode`),
+  KEY `inode` (`inode`,`inuse`,`deleted`)
+) ENGINE=MyISAM DEFAULT CHARSET=binary;
 
 /*!50003 SET @OLD_SQL_MODE=@@SQL_MODE*/;
 DELIMITER ;;
@@ -84,19 +64,9 @@ CREATE TABLE `tree` (
   `parent` int(10) unsigned default NULL,
   `name` varchar(255) NOT NULL,
   UNIQUE KEY `name` (`name`,`parent`),
-  KEY `inode` (`inode`)
+  KEY `inode` (`inode`),
+  KEY `parent` (`parent`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
-
---
--- Dumping data for table `tree`
---
-
-
-/*!40000 ALTER TABLE `tree` DISABLE KEYS */;
-LOCK TABLES `tree` WRITE;
-INSERT INTO `tree` VALUES (1,NULL,'/');
-UNLOCK TABLES;
-/*!40000 ALTER TABLE `tree` ENABLE KEYS */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

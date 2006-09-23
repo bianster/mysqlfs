@@ -1,3 +1,13 @@
+2006-09-23  Michal Ludvig  <michal@logix.cz>
+
+	* Create root directory on startup if it doesn't exist.
+	* Changed timestamp fields in 'inodes' table to 'int
+	  unsigned' to avoid conversion between MYSQL timestamp and 
+	  Unix timestamp in a number of queries.
+	* Updated schema.sql. Now with autocreating '/' it's enough 
+	  to use 'mysqldump -d' i.e. dump just the schema without
+	  data.
+
 2006-09-17  Michal Ludvig  <michal@logix.cz>
 
 	* pool.c: Rewritten from scratch. It doesn't have a limit
