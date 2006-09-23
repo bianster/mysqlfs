@@ -1,3 +1,19 @@
+What is new in 0.3
+------------------
+
+* Complete set of essential operations is now available.
+
+* Fixed most (all?) bugs from previous implementations, 
+  especially for write().
+
+* Reworked database schema - now with separate tables
+  for directory tree, for inodes and for data.
+
+* Rewritten pooling to avoid "Aieee, we're out of connections!" 
+  errors.
+
+* Requires MySQL 5.0.x or higher.
+
 What is new in 0.2
 ------------------
 

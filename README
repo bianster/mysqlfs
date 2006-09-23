@@ -1,8 +1,8 @@
                       mysqlfs - MySQL FileSystem
 
-$Id: README,v 1.5 2006/09/06 04:45:32 ludvigm Exp $
+$Id: README,v 1.6 2006/09/23 09:33:15 ludvigm Exp $
 
-mysqlfs is linux filesystem which store file in mysql database.
+MySQLfs is a FUSE filesystem driver which stores files in a MySQL database.
 
 * Requirements
 
@@ -20,34 +20,36 @@ mysqlfs is linux filesystem which store file in mysql database.
 
 * Usage
 
-1. create database and account
+1. Create database and account
    mysql> CREATE DATABASE mysqlfs;
    mysql> GRANT SELECT, INSERT, UPDATE, DELETE ON mysqlfs.* TO mysqlfs@"%" IDENTIFIED BY 'password';
    mysql> FLUSH PRIVILEGES;
 
-2. create table
+2. Create tables
    $ mysql -uroot -p mysqlfs < schema.sql
 
-3. mount database
+3. Mount database as a filesystem
    $ mkdir fs
-   $ ./mysqlfs -ohost=host -ouser=user -opassword=pass -odatabase=mysqlfs fs
+   $ ./mysqlfs -ohost=localhost -ouser=user -opassword=pass -odatabase=mysqlfs fs
+
+4. Instead of setting connection options on the command line
+   you may create a [mysqlfs] section in your ~/.my.cnf file and
+   set the parameters there.
 
 * Options
 
-  -ohost
+  -ohost=<hostname>
     MySQL server host
 
-  -ouser
+  -ouser=<username>
     MySQL username
 
-  -opassword
+  -opassword=<password>
     MySQL password
 
-  -odatabase
+  -odatabase=<db>
     MySQL database name
-
-  -oconnection
-    MySQL connection number(default=5)
 
 
 Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
+Copyright (C) 2006 Michal Ludvig <michal@logix.cz>

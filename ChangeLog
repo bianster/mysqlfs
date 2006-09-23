@@ -1,5 +1,10 @@
 2006-09-23  Michal Ludvig  <michal@logix.cz>
 
+	* Updated version to 0.3
+	* Updated auxiliary files (README, TODO, ...)
+
+2006-09-23  Michal Ludvig  <michal@logix.cz>
+
 	* Create root directory on startup if it doesn't exist.
 	* Changed timestamp fields in 'inodes' table to 'int
 	  unsigned' to avoid conversion between MYSQL timestamp and 
