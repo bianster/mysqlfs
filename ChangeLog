@@ -1,3 +1,8 @@
+2006-10-03  Michal Ludvig  <michal@logix.cz>
+
+	* Updated version to 0.3.1
+	* Added schema.sql to the distribution tarball. Oops!
+
 2006-09-23  Michal Ludvig  <michal@logix.cz>
 
 	* Updated version to 0.3

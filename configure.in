@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
-dnl $Id: configure.in,v 1.7 2006/09/23 09:33:15 ludvigm Exp $
+dnl $Id: configure.in,v 1.8 2006/10/02 22:34:03 ludvigm Exp $
 
-AC_INIT(mysqlfs, 0.3)
+AC_INIT(mysqlfs, 0.3.1)
 AM_INIT_AUTOMAKE(dist-bzip2)
 AC_CONFIG_HEADERS(config.h)
 AC_CONFIG_SRCDIR([configure.in])

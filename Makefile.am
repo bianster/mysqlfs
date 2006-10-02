@@ -1,6 +1,7 @@
-# $Id: Makefile.am,v 1.3 2006/09/04 11:43:29 ludvigm Exp $
+# $Id: Makefile.am,v 1.4 2006/10/02 22:34:03 ludvigm Exp $
 
 bin_PROGRAMS = mysqlfs
+EXTRA_DIST = schema.sql
 
 mysqlfs_SOURCES = mysqlfs.c query.c pool.c log.c
 
