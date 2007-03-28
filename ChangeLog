@@ -1,5 +1,9 @@
 2007-03-29  Michal Ludvig  <michal@logix.cz>
 
+	* Update NEWS and configure.in to release 0.4.0-rc1
+
+2007-03-29  Michal Ludvig  <michal@logix.cz>
+
 	* Reworked data storage. Instead of one huge record 
 	  for each file in table "data" we now store the data 
 	  in 4kB chunks (a.k.a. "sectors" or "blocks"). That 

@@ -1,3 +1,12 @@
+What is new in 0.4.0
+--------------------
+
+* Reworked data storage. Instead of one huge record for each
+  file we now store the data in 4kB blocks. That greatly 
+  improves performance, storage efficiency and overcomes
+  problems when storing files larger than 1MB. As a side
+  effect it allows storing "sparse" files.
+  
 What is new in 0.3.1
 --------------------
 
