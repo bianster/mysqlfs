@@ -1,3 +1,12 @@
+2007-03-29  Michal Ludvig  <michal@logix.cz>
+
+	* Reworked data storage. Instead of one huge record 
+	  for each file in table "data" we now store the data 
+	  in 4kB chunks (a.k.a. "sectors" or "blocks"). That 
+	  speeds up especially updates to files a _lot_ :-)
+	  As a side effect it allows for storing "sparse" files.
+	  CAUTION: database schema has changed in this version!
+
 2006-10-03  Michal Ludvig  <michal@logix.cz>
 
 	* Updated version to 0.3.1

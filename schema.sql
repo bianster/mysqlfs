@@ -19,11 +19,12 @@
 -- Table structure for table `data`
 --
 
-DROP TABLE IF EXISTS `data`;
-CREATE TABLE `data` (
+DROP TABLE IF EXISTS `data_blocks`;
+CREATE TABLE `data_blocks` (
   `inode` bigint(20) NOT NULL,
-  `data` longblob NOT NULL,
-  PRIMARY KEY  (`inode`)
+  `seq` int unsigned not null,
+  `data` blob ,
+  PRIMARY KEY  (`inode`, `seq`)
 ) ENGINE=MyISAM DEFAULT CHARSET=binary;
 
 --
@@ -49,7 +50,7 @@ CREATE TABLE `inodes` (
 /*!50003 SET @OLD_SQL_MODE=@@SQL_MODE*/;
 DELIMITER ;;
 /*!50003 SET SESSION SQL_MODE="" */;;
-/*!50003 CREATE */ /*!50017 DEFINER=`root`@`localhost` */ /*!50003 TRIGGER `drop_data` AFTER DELETE ON `inodes` FOR EACH ROW BEGIN DELETE FROM data WHERE inode=OLD.inode; END */;;
+/*!50003 CREATE */ /*!50017 DEFINER=`root`@`localhost` */ /*!50003 TRIGGER `drop_data` AFTER DELETE ON `inodes` FOR EACH ROW BEGIN DELETE FROM data_blocks WHERE inode=OLD.inode; END */;;
 
 DELIMITER ;
 /*!50003 SET SESSION SQL_MODE=@OLD_SQL_MODE */;
