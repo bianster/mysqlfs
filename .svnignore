@@ -1,3 +1,4 @@
+## Run 'svn propset svn:ignore -F .svnignore .' after you change this list
 .deps
 .in
 .libs
