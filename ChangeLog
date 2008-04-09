@@ -1,3 +1,7 @@
+2008-04-09  Michal Ludvig  <michal@logix.cz>
+
+	* Migrated from CVS to SVN
+
 2007-03-29  Michal Ludvig  <michal@logix.cz>
 
 	* Update NEWS and configure.in to release 0.4.0-rc1
