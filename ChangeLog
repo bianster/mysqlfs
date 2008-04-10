@@ -1,4 +1,7 @@
 2008-04-10  Florian Wiessner <f.wiessner@smart-weblications.de>
+	* Updated pool.h
+
+2008-04-10  Florian Wiessner <f.wiessner@smart-weblications.de>
 	* Added fsck support in query.c
 	* Added -ofsck=1 switch to mysqlfs, fsck is only done when 
 	  -ofsck=1 is set on commandline.

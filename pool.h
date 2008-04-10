@@ -14,6 +14,7 @@ struct mysqlfs_opt {
     char *db;                   /* MySQL database name */
     unsigned int port;		/* MySQL port */
     char *socket;		/* MySQL socket */
+    unsigned int fsck;		/* fsck boolean 1 => do fsck, 0 => don't  */
     char *mycnf_group;		/* Group in my.cnf to read defaults from */
     unsigned int init_conns;	/* Number of DB connections to init on startup */
     unsigned int max_idling_conns;	/* Maximum number of idling DB connections */
