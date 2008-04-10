@@ -625,6 +625,12 @@ static int mysqlfs_opt_proc(void *data, const char *arg, int key,
         return 0;
     }
 
+    if(!strncmp(arg, "fsck=", strlen("fsck="))){
+        str = strchr(arg, '=') + 1;
+        opt->fsck = atoi(str);
+        return 0;
+    }
+
     /* Read defaults from specified group in my.cnf
      * Command line options still have precedence.  */
     if(!strncmp(arg, "mycnf_group=", strlen("mycnf_group="))){

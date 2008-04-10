@@ -103,7 +103,9 @@ static int pool_check_mysql_setup(MYSQL *mysql)
 	goto out;
 
     /* Cleanup. */
-    ret = query_fsck(mysql);
+    if (opt->fsck == 1) {
+        ret = query_fsck(mysql);
+    }
 
 out:
     return ret;

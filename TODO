@@ -1,11 +1,3 @@
-* Implement basic FSCK and root inode population on startup
-	- FSCK should:
-		- delete inodes with deleted==1
-		- delete direntries without corresponding inode
-		- set inuse=0 for all inodes
-		- delete data without existing inode
-		- synchronize inodes.size=data.LENGTH(data)
-
 * Implement more robust connection pool
 	- avoid -EMFILE when there are no more free connections
 

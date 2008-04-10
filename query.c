@@ -27,6 +27,7 @@
 #include "log.h"
 
 #define SQL_MAX 10240
+#define INODE_CACHE_MAX 4096
 
 static inline int lock_inode(MYSQL *mysql, long inode)
 {
@@ -64,7 +65,6 @@ int query_getattr(MYSQL *mysql, const char *path, struct stat *stbuf)
     char sql[SQL_MAX];
     MYSQL_RES* result;
     MYSQL_ROW row;
-
     ret = query_inode_full(mysql, path, NULL, 0, &inode, NULL, &nlinks);
     if (ret < 0)
       return ret;
@@ -296,7 +296,7 @@ long query_mknod(MYSQL *mysql, const char *path, mode_t mode, dev_t rdev,
     long new_inode_number = 0;
     char *name, esc_name[PATH_MAX * 2];
 
-    if (path[0] == '/' && path[1] == '\0') {
+    if (path[0] == '/' && path[1] == '\0')  {
         snprintf(sql, SQL_MAX,
                  "INSERT INTO tree (name, parent) VALUES ('/', NULL)");
 
@@ -306,9 +306,9 @@ long query_mknod(MYSQL *mysql, const char *path, mode_t mode, dev_t rdev,
           goto err_out;
     } else {
         name = strrchr(path, '/');
-        if (!name || *++name == '\0')
+        if (!name || *++name == '\0') 
             return -ENOENT;
-
+            
         mysql_real_escape_string(mysql, esc_name, name, strlen(name));
         snprintf(sql, SQL_MAX,
                  "INSERT INTO tree (name, parent) VALUES ('%s', %ld)",
@@ -919,6 +919,127 @@ int query_set_deleted(MYSQL *mysql, long inode)
 
 int query_fsck(MYSQL *mysql)
 {
-    // See TODO file for what should be here...
-    return 0;
+
+    /*
+     query_fsck by florian wiessner (f.wiessner@smart-weblications.de)
+    */
+    printf("Starting fsck\n");
+
+    // 1. delete inodes with deleted==1
+    int ret;
+//    int ret2;
+    int result;
+    char sql[SQL_MAX];
+    printf("Stage 1...\n");
+    snprintf(sql, SQL_MAX,
+             "DELETE from inodes WHERE inodes.deleted = 1");
+
+    log_printf(LOG_D_SQL, "sql=%s\n", sql);
+
+    ret = mysql_query(mysql, sql);
+    if(ret){
+        log_printf(LOG_ERROR, "Error: mysql_query()\n");
+        log_printf(LOG_ERROR, "mysql_error: %s\n", mysql_error(mysql));
+        return -EIO;
+    }
+    // 2. - delete direntries without corresponding inode
+    printf("Stage 2...\n");
+    snprintf(sql, SQL_MAX, "delete from tree where tree.inode not in (select inode from inodes);");
+
+    log_printf(LOG_D_SQL, "sql=%s\n", sql);
+    ret = mysql_query(mysql, sql);
+
+    if(ret){
+        log_printf(LOG_ERROR, "Error: mysql_query()\n");
+        log_printf(LOG_ERROR, "mysql_error: %s\n", mysql_error(mysql));
+        return -EIO;
+    }
+
+
+
+    // 3. set inuse=0 for all inodes
+    printf("Stage 3...\n");
+    snprintf(sql, SQL_MAX, "UPDATE inodes SET inuse=0;");
+
+    log_printf(LOG_D_SQL, "sql=%s\n", sql);
+
+    ret = mysql_query(mysql, sql);
+    if(ret){
+        log_printf(LOG_ERROR, "Error: mysql_query()\n");
+        log_printf(LOG_ERROR, "mysql_error: %s\n", mysql_error(mysql));
+        return -EIO;
+    }
+
+
+    // 4. delete data without existing inode
+    printf("Stage 4...\n");
+    snprintf(sql, SQL_MAX, "delete from data_blocks where inode not in (select inode from inodes);");
+
+    log_printf(LOG_D_SQL, "sql=%s\n", sql);
+
+    ret = mysql_query(mysql, sql);
+    if(ret){
+        log_printf(LOG_ERROR, "Error: mysql_query()\n");
+        log_printf(LOG_ERROR, "mysql_error: %s\n", mysql_error(mysql));
+        return -EIO;
+    }
+
+
+    // 5. synchronize inodes.size=data.LENGTH(data)
+    printf("Stage 5...\n");
+    long int inode;
+    long int size;
+    
+    snprintf(sql, SQL_MAX, "select inode, sum(OCTET_LENGTH(data)) as size from data_blocks group by inode");
+
+    log_printf(LOG_D_SQL, "sql=%s\n", sql);
+
+    ret = mysql_query(mysql, sql);
+
+    MYSQL_RES* myresult;
+    MYSQL_ROW row;
+
+    myresult = mysql_store_result(mysql);
+    while ((row = mysql_fetch_row(myresult)) != NULL) {
+     inode = atol(row[0]);
+     size = atol(row[1]);
+                     
+      snprintf(sql, SQL_MAX, "update inodes set size=%ld where inode=%ld;", size, inode);
+      log_printf(LOG_D_SQL, "sql=%s\n", sql);
+      result = mysql_query(mysql, sql);
+
+/*      if (myresult) { // something has gone wrong.. delete datablocks...
+
+        snprintf(sql, SQL_MAX, "delete from inodes where inode=%ld;", inode);
+        log_printf(LOG_D_SQL, "sql=%s\n", sql);
+        ret2 = mysql_query(mysql, sql);
+
+      }
+*/ // skip this for now!
+
+    }
+
+    if(ret){
+        log_printf(LOG_ERROR, "Error: mysql_query()\n");
+        log_printf(LOG_ERROR, "mysql_error: %s\n", mysql_error(mysql));
+       return -EIO;
+    }
+    mysql_free_result(myresult);
+
+/*    printf("optimizing tables\n");
+    snprintf(sql, SQL_MAX,
+             "OPTIMIZE TABLE inodes;");
+
+    log_printf(LOG_D_SQL, "sql=%s\n", sql);
+
+    ret = mysql_query(mysql, sql);
+    if(ret){
+        log_printf(LOG_ERROR, "Error: mysql_query()\n");
+        log_printf(LOG_ERROR, "mysql_error: %s\n", mysql_error(mysql));
+        return -EIO;
+    }
+*/
+    printf("fsck done!\n");
+    return ret;
+
 }
