@@ -34,6 +34,7 @@ FUSE_LDFLAGS="-L${FUSE_LIB_DIR}"
 FUSE_CFLAGS="-I${FUSE_INC_DIR}"
 LDFLAGS="$LDFLAGS $FUSE_LDFLAGS"
 CFLAGS="$CFLAGS $FUSE_CFLAGS"
+CPPFLAGS="$CPPFLAGS $FUSE_CFLAGS"
 
 MYSQL_CONFIG=$(which mysql_config)
 if test "$MYSQL_CONFIG"; then
@@ -58,14 +59,15 @@ else
 fi
 LDFLAGS="$LDFLAGS $MYSQL_LDFLAGS"
 CFLAGS="$CFLAGS $CFLAGS_ADD $MYSQL_CFLAGS"
+CPPFLAGS="$CPPFLAGS $MYSQL_CFLAGS"
 
 dnl Checks for libraries.
 AC_CHECK_LIB(pthread, pthread_create,, AC_MSG_ERROR([Please install pthreads library first.]))
 AC_CHECK_LIB(mysqlclient, mysql_init,, AC_MSG_ERROR([Please install mysqlclient library first.]))
 AC_CHECK_LIB(fuse, fuse_main,, AC_MSG_ERROR([Please install fuse library first.]))
 
-dnl Checks for header files.
-AC_CHECK_HEADERS(stdio.h)
+dnl Checks for header files. (mac -- and BSD? -- have statfs in mount.h)
+AC_CHECK_HEADERS(stdio.h sys/param.h sys/mount.h)
 
 AC_CHECK_HEADERS(fuse/fuse.h,, AC_MSG_ERROR([Please install FUSE development package]))
 AC_MSG_CHECKING(FUSE API version)
@@ -76,10 +78,17 @@ yes
         AC_MSG_ERROR([FUSE version 2.5 or higher is required.])
 ])
 
-AC_CHECK_HEADERS(mysql/mysql.h,, AC_MSG_ERROR([Please install MySQL development package]))
+dnl check for one header location, and if not found, try the second.  Is this possible in a AC_* while still offering the error message?
+AC_CHECK_HEADERS(mysql.h ,, [AC_CHECK_HEADERS(mysql/mysql.h,, AC_MSG_ERROR([Please install MySQL development package]))] )
 
 AC_MSG_CHECKING(MySQL version)
-AC_EGREP_CPP(yes, [#include <mysql/mysql_version.h>
+AC_EGREP_CPP(yes, [
+#ifdef HAVE_MYSQL_MYSQL_H
+#include <mysql/mysql_version.h>
+#endif
+#ifdef HAVE_MYSQL_H
+#include <mysql_version.h>
+#endif
 #if MYSQL_VERSION_ID > MYSQL_MIN_VERSION
 yes
 #endif], [AC_MSG_RESULT(ok)], [AC_MSG_RESULT(too old)
