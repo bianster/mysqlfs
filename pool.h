@@ -19,6 +19,7 @@ struct mysqlfs_opt {
     unsigned int init_conns;	/* Number of DB connections to init on startup */
     unsigned int max_idling_conns;	/* Maximum number of idling DB connections */
     char *logfile;
+    int bg;
 };
 
 /* Initalize pool and preallocate connections */

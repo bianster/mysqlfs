@@ -25,8 +25,12 @@ MySQLfs is a FUSE filesystem driver which stores files in a MySQL database.
    mysql> GRANT SELECT, INSERT, UPDATE, DELETE ON mysqlfs.* TO mysqlfs@"%" IDENTIFIED BY 'password';
    mysql> FLUSH PRIVILEGES;
 
+   (note FAQ: Errors #1 "Access Denied For User" below)
+
 2. Create tables
    $ mysql -uroot -p mysqlfs < schema.sql
+
+   (note FAQ: Errors #2 "Can't Create/Write to File" below)
 
 3. Mount database as a filesystem
    $ mkdir fs
@@ -49,6 +53,43 @@ MySQLfs is a FUSE filesystem driver which stores files in a MySQL database.
 
   -odatabase=<db>
     MySQL database name
+
+* FAQ: ERRORS
+
+1. Access Denied For User 'mysql'@'localhost'
+
+   ie: (using the example GRANT above) 
+   $ ./mysqlfs -ohost=localhost -ouser=mysqlfs -opassword=password -odatabase=mysqlfs fs
+
+   2009-06-14 00:59:29 89956 ERROR: mysql_real_connect(): Access denied for user 'mysqlfs'@'localhost' (using password: YES)
+   2009-06-14 00:59:29 89956 ERROR: mysql_real_connect(): Access denied for user 'mysqlfs'@'localhost' (using password: YES)
+   2009-06-14 00:59:29 89956 Failed to connect MySQL server.
+   2009-06-14 00:59:29 89956 Error: pool_init() failed
+
+   MySQL is sticky sometimes with access; on MacOSX, I had to specifically allow localhost:
+
+   mysql> GRANT SELECT, INSERT, UPDATE, DELETE ON mysqlfs.* TO mysqlfs@"localhost" IDENTIFIED BY 'password';
+
+   $ sudo /usr/local/mysql/bin/mysqladmin reload
+
+   Remember, also, that 'localhost' and '127.0.0.1' may appear differently.  Check also your /etc/hosts entry, some
+   systems define 127.0.0.1 as their uname() which causes problems doing PTRs against it, expecting 'localhost'
+   but getting 'myhostname'
+
+
+2. Can't Create/Write to File (while building database)
+
+   ie: (using the "Create tables" step #2 above)
+   $ sudo /usr/local/mysql/bin/mysql mysqlfs < schema.sql
+   ERROR 1 (HY000) at line 23: Can't create/write to file '/usr/local/mysql/data/mysqlfs/data_blocks.MYI' (Errcode: 13)
+
+   On MacOSX with http://dev.mysql.com/get/Downloads/MySQL-5.1/mysql-5.1.35-osx10.5-x86.dmg ,
+   rather than "CREATE DATABASE mysqlfs", I had to use:
+
+   $ sudo /usr/local/mysql/bin/mysqladmin create mysqlfs && sudo chown _mysql /usr/local/mysql/data/mysqlfs
+
+   The grant/flush commands worked fine after that.  In my usage, I'm "sudo" which can affect the output, so the
+   error might have been mine alone.  I'm commenting here in case someone else sees it.
 
 
 Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>

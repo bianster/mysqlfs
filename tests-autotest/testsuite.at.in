@@ -1,0 +1,11 @@
+AT_INIT()
+
+AT_SETUP(Basic Mount)
+AT_CHECK([mkdir -p fs],[ignore],[ignore])
+AT_CHECK([@abs_top_builddir@/@at_testdir@/timeout -t 10 -- @abs_top_builddir@/mysqlfs -obackground -ohost=localhost -ouser=mysqlfs -opassword=password -odatabase=mysqlfs ./fs])
+
+AT_CHECK([find fs],0,[fs
+],[ignore])
+
+AT_CHECK([killall mysqlfs],[ignore],[ignore])
+AT_CLEANUP()

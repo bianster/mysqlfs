@@ -593,6 +593,10 @@ static int mysqlfs_opt_proc(void *data, const char *arg, int key,
         return 0;
     }
 
+    /*
+     * There are primitives for this in FUSE, but no need to change at this point
+     */
+
     if(!strncmp(arg, "host=", strlen("host="))){
         str = strchr(arg, '=') + 1;
         opt->host = str;
@@ -650,6 +654,11 @@ static int mysqlfs_opt_proc(void *data, const char *arg, int key,
         return 0;
     }
 
+    if(!strncmp(arg, "background", strlen("background"))){
+        opt->bg = 1;
+        return 0;
+    }
+
     fuse_opt_add_arg(outargs, arg);
     return 0;
 }
@@ -675,6 +684,19 @@ int main(int argc, char *argv[])
         log_printf(LOG_ERROR, "Error: pool_init() failed\n");
         fuse_opt_free_args(&args);
         return EXIT_FAILURE;        
+    }
+
+    /*
+     * I found that -- running from a script (ie no term?) -- the MySQLfs would not background, so the terminal is held; this makes automated testing difficult.
+     *
+     * I (allanc) put this into here to allow for AUTOTEST, but then autotest has to seek-and-destroy the app.  This isn't quite perfect yet, I get some flakiness here, othertines the pid is 4 more than the parent, which is odd.
+     */
+    if (0 < opt.bg)
+    {
+        if (0 < fork())
+            return EXIT_SUCCESS;
+        //else
+        //    fprintf (stderr, "forked %d\n", getpid());
     }
 
     log_file = log_init(opt.logfile, 1);
