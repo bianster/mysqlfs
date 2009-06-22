@@ -5,10 +5,16 @@ bin_PROGRAMS = mysqlfs
 # because the source is not in a subdir, we cannot just put the tests in a SUBDIRS= :(
 check-recursive : mysqlfs
 
-EXTRA_DIST = schema.sql
+EXTRA_DIST = schema.sql mysqlfs.spec
 
 SUBDIRS = tests-autotest
 
 mysqlfs_SOURCES = mysqlfs.c query.c pool.c log.c
 
 noinst_HEADERS = mysqlfs.h query.h pool.h log.h
+
+if DO_DOXYGEN
+doc: Doxyfile
+	$(DOXYGEN)
+endif
+

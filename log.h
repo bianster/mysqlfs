@@ -7,9 +7,15 @@
   See the file COPYING.
 */
 
+/** @file */
+
+/** FILE representing the open log file.  Defaulting to stderr, this file is defined by log_init() in main() when the "-ologfile=" option is used */
 extern FILE *log_file;
+
+/** bitfield of the log levels that are to be logged to the log_file.  Defaults to LOG_ERROR | LOG_INFO */
 extern int log_types_mask;
 
+/** defines logging-levels similar to syslog */
 enum log_types {
   LOG_ERROR	= 0x0001,
   LOG_WARNING	= 0x0002,
@@ -25,6 +31,16 @@ enum log_types {
   LOG_MASK_MINOR	= 0xFF00,
 };
 
+/** log a variable-format/token log message */
 int log_printf(enum log_types type, const char *logmsg, ...);
+
+/**
+ * initialize the log.  If "stdout" or "stderr" are used, the existing streams will be returned.
+ * @return a pointer to the newly-opened log file, or stdout or stderr if those strings are used
+ * @param filename name of file to use
+ * @param verbose print a message to show the filename being opened
+ */
 FILE *log_init(const char *filename, int verbose);
+
+/** close the log file */
 void log_finish(FILE *f);

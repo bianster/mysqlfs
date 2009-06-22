@@ -7,6 +7,8 @@
   See the file COPYING.
 */
 
+/** @file */
+
 struct data_blocks_info {
     unsigned long	seq_first,	/* Sequence ID of 1st and last block.  */
 			seq_last;

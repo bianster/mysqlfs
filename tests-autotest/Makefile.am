@@ -5,11 +5,11 @@ check-local: atconfig atlocal $(TESTSUITE) timeout
 	$(SHELL) $(TESTSUITE)
 	rm -fr $(subdir)/testsuite.dir
 
-bin_PROGRAMS = timeout
+check_PROGRAMS = timeout
 timeout_SOURCES = timeout.c
 
 AUTOTEST = $(AUTOM4TE) --language=autotest
-$(TESTSUITE): testsuite.at $(srcdir)/package.m4
+testsuite $(TESTSUITE): testsuite.at $(srcdir)/package.m4
 	@echo Making $@...
 	$(AUTOTEST) -I $(srcdir)/$(srcdir) $< | sed -e 's/@at_testdir@/$(subdir)/g' > $@.tmp && mv $@.tmp $@
 

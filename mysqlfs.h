@@ -7,8 +7,12 @@
   See the file COPYING.
 */
 
+/** @file */
+
+/** maximum length of a full pathname */
 #define PATH_MAX 1024
 
+/** size of a single datablock written to the database; should be less than the size of a "blob" or mysqlfs.sql needs to be altered */
 #define DATA_BLOCK_SIZE	4096
 
 #define MIN(a,b)	((a) < (b) ? (a) : (b))

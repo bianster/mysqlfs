@@ -1,0 +1,38 @@
+Summary: FUSE/MySQL Filesystem
+Name: @PACKAGE@
+Version: @VERSION@
+Release: %(echo '$Id$'|cut -d " " -f 3|cut -d . -f 2)
+License: GPL2
+Group: System Environment/Filesystems
+URL: http://mysqlfs.sourceforge.net/
+
+Source: %{name}-%{version}.tar.bz2
+BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
+
+%description
+MySQLfs is Linux userspace filesystem which stores data in a MySQL database. It uses FUSE to interface with the kernel.
+
+%prep
+%setup
+
+%build
+%configure && make
+
+%install
+make install DESTDIR=%{buildroot}
+
+%clean
+%{__rm} -rf %{buildroot}
+
+%files
+%defattr(-, root, root, 0755)
+%{_bindir}/mysqlfs
+
+%changelog
+* Sun Jun 21 2009 Allan Clark <allanc@chickenandporn.com> - 0.3.99.1
+- checks for doxygen, builds API docs
+
+* Thu Jun 4 2009 Allan Clark <allanc@chickenandporn.com> - 0.3.99.0
+- passes distcheck
+- Initial package (please, how about a basic X.Y.Z.Q version?  strcmp("0.4.0-rc1","0.4.0") is misleading.
+

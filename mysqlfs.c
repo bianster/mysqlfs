@@ -37,9 +37,7 @@
 #include "pool.h"
 #include "log.h"
 
-#define PATH_MAX 1024
-
-static int mysqlfs_getattr(const char *path, struct stat *stbuf)
+int mysqlfs_getattr(const char *path, struct stat *stbuf)
 {
     int ret;
     MYSQL *dbconn;
@@ -106,6 +104,7 @@ static int mysqlfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     return 0;
 }
 
+/** FUSE function for mknod(const char *pathname, mode_t mode, dev_t dev); API call.  @see http://linux.die.net/man/2/mknod */
 static int mysqlfs_mknod(const char *path, mode_t mode, dev_t rdev)
 {
     int ret;
@@ -556,6 +555,7 @@ static int mysqlfs_rename(const char *from, const char *to)
     return ret;
 }
 
+/** used below in fuse_main() to define the entry points for a FUSE filesystem; this is the same VMT-like jump table used throughout the UNIX kernel. */
 static struct fuse_operations mysqlfs_oper = {
     .getattr	= mysqlfs_getattr,
     .readdir	= mysqlfs_readdir,
@@ -577,6 +577,7 @@ static struct fuse_operations mysqlfs_oper = {
     .rename	= mysqlfs_rename,
 };
 
+/** print out a brief usage aide-memoire to stderr */
 void usage(){
     fprintf(stderr,
             "usage: mysqlfs -ohost=host -ouser=user -opasswd=passwd "
@@ -663,7 +664,7 @@ static int mysqlfs_opt_proc(void *data, const char *arg, int key,
     return 0;
 }
 
-/*
+/**
  * main
  */
 int main(int argc, char *argv[])
