@@ -37,7 +37,7 @@
 #include "pool.h"
 #include "log.h"
 
-int mysqlfs_getattr(const char *path, struct stat *stbuf)
+static int mysqlfs_getattr(const char *path, struct stat *stbuf)
 {
     int ret;
     MYSQL *dbconn;

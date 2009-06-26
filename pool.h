@@ -20,7 +20,7 @@ struct mysqlfs_opt {
     char *db;                   /**< MySQL database name */
     unsigned int port;		/**< MySQL port */
     char *socket;		/**< MySQL socket */
-    unsigned int fsck;		/**< fsck boolean 1 => do fsck, 0 => don't  */
+    unsigned int fsck;		/**< fsck boolean 1 => do fsck, 0 => don't.  Used in pool_check_mysql_setup() to call query_fsck()  */
     char *mycnf_group;		/**< Group in my.cnf to read defaults from */
     unsigned int init_conns;	/**< Number of DB connections to init on startup */
     unsigned int max_idling_conns;	/**< Maximum number of idling DB connections */
@@ -28,14 +28,14 @@ struct mysqlfs_opt {
     int bg;			/**< (used for autotest) whether a term-less execution should background */
 };
 
-/* Initalize pool and preallocate connections */
+/** Initalize pool and preallocate connections */
 int pool_init(struct mysqlfs_opt *opt);
 
-/* Close all connections and cleanup pool */
+/** Close all connections and cleanup pool */
 void pool_cleanup();
 
-/* Get DB connection from pool */
+/** Get DB connection from pool */
 void *pool_get();
 
-/* Put DB connection back to the pool */
+/** Put DB connection back to the pool */
 void pool_put(void *conn);

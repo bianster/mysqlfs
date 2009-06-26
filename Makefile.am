@@ -14,7 +14,16 @@ mysqlfs_SOURCES = mysqlfs.c query.c pool.c log.c
 noinst_HEADERS = mysqlfs.h query.h pool.h log.h
 
 if DO_DOXYGEN
-doc: Doxyfile
+doc: Doxyfile pkg/doc-mainpage.c
 	$(DOXYGEN)
+
+doc-website: doc
+	rsync -avP -e ssh htdocs/html chickenandporn,@PACKAGE_NAME@@frs.sourceforge.net:htdocs
+endif
+
+if DO_RPMBUILD
+release = $(rpm --query --queryformat="%{RELEASE}\n" --specfile @PACKAGE@.spec |head -1)
+rpm: @PACKAGE@-@VERSION@.tar.gz @PACKAGE@.spec
+	$(RPMBUILD) -ta $<
 endif
 

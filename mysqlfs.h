@@ -15,5 +15,7 @@
 /** size of a single datablock written to the database; should be less than the size of a "blob" or mysqlfs.sql needs to be altered */
 #define DATA_BLOCK_SIZE	4096
 
+/** basic preprocessor-phase maximum macro */
 #define MIN(a,b)	((a) < (b) ? (a) : (b))
+/** basic preprocessor-phase minimum macro */
 #define MAX(a,b)	((a) > (b) ? (a) : (b))

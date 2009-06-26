@@ -63,6 +63,19 @@ fill_data_blocks_info(struct data_blocks_info *info, size_t size, off_t offset)
     return info;
 }
 
+/**
+ * Get the attributes of an inode, filling in a struct stat.  This function
+ * uses query_inode_full() to get the inode and nlinks of the given path, then
+ * reads the inode data from the database, storing this data into the provided
+ * structure.
+ *
+ * @return 0 if successful
+ * @return -EIO if the result of mysql_query() is non-zero
+ * @return -ENOENT if the inode at the give path is not found (actually, if the number of results is not exactly 1)
+ * @param mysql handle to connection to the database
+ * @param path pathname to check
+ * @param stbuf struct stat to fill with the inode contents
+ */
 int query_getattr(MYSQL *mysql, const char *path, struct stat *stbuf)
 {
     int ret;
@@ -117,6 +130,27 @@ int query_getattr(MYSQL *mysql, const char *path, struct stat *stbuf)
     return 0;
 }
 
+/**
+ * Walk the directory tree to find the inode at the given absolute path,
+ * storing name, inode, parent inode, and number of links.  Last developer of
+ * this function indicates that the pathname may overflow -- sounds like a
+ * good testcase :)
+ *
+ * If any of the name, inode, parent, or nlinks are given, those values will be
+ * recorded form the inode data to the given buffers.  The name is written to
+ * the given name_len.
+ *
+ * @return 0 if successful
+ * @return -EIO if the result of mysql_query() is non-zero
+ * @return -ENOENT if the file at this path is not found
+ * @param mysql handle to connection to the database
+ * @param path (absolute) pathname of inode to find
+ * @param name destination to record (relative) name of the inode (may be NULL)
+ * @param name_len length of destination buffer "name"
+ * @param inode where to write the inode value, if found (may be NULL)
+ * @param parent where to write the parent's inode value, if found (may be NULL)
+ * @param nlinks where to write the number of links to the inode, if found (may be NULL)
+ */
 int query_inode_full(MYSQL *mysql, const char *path, char *name, size_t name_len,
 		      long *inode, long *parent, long *nlinks)
 {
@@ -198,6 +232,16 @@ int query_inode_full(MYSQL *mysql, const char *path, char *name, size_t name_len
     return 0;
 }
 
+/**
+ * Get the inode of a pathname.  This is really a convenience function wrapping
+ * the query_inode_full() function, but can instead be used as a function with
+ * a nestable return value.
+ *
+ * @return ID of inode
+ * @return < 0 result of query_inode_full() if that ufnction reports a failure
+ * @param mysql handle to connection to the database
+ * @param path (full) pathname of inode to find
+ */
 long query_inode(MYSQL *mysql, const char *path)
 {
     long inode, ret;
@@ -208,6 +252,20 @@ long query_inode(MYSQL *mysql, const char *path)
     return inode;
 }
 
+/**
+ * Change the length of a file, truncating any additional data blocks and
+ * immediately deleting the data blocks past the truncation length.  Function
+ * works by deleting whole blocks past the truncation point, limiting the
+ * partially-cleared block, and zeroing the extra part of the buffer.
+ * Called by mysqlfs_truncate().
+ *
+ * @see http://linux.die.net/man/2/truncate
+ *
+ * @return 0 on success; non-zero return of mysql_query() on error
+ * @param mysql handle to connection to the database
+ * @param path pathname of file to truncate
+ * @param length new length of file
+ */
 int query_truncate(MYSQL *mysql, const char *path, off_t length)
 {
     int ret;
@@ -251,6 +309,17 @@ err_out:
     return ret;
 }
 
+/**
+ * The opposite of query_rmdirentry(), this function creates a directory in
+ * the tree with given inode and parent inode.
+ *
+ * @return 0 if successful
+ * @return -EIO if the result of mysql_query() is non-zero
+ * @param mysql handle to connection to the database
+ * @param inode inode of new directory
+ * @param name name (relative)  of directory to create
+ * @param parent inode of directory holding the directory
+ */
 int query_mkdirentry(MYSQL *mysql, long inode, const char *name, long parent)
 {
     int ret;
@@ -272,6 +341,15 @@ int query_mkdirentry(MYSQL *mysql, long inode, const char *name, long parent)
     return 0;
 }
 
+/**
+ * The opposite of query_mkdirentry(), this function deletes a directory from the tree with a parent that matches the inode given.
+ *
+ * @return 0 if successful
+ * @return -EIO if the result of mysql_query() is non-zero
+ * @param mysql handle to connection to the database
+ * @param name name (relative)  of directory to delete
+ * @param parent inode of directory holding the directory
+ */
 int query_rmdirentry(MYSQL *mysql, const char *name, long parent)
 {
     int ret;
@@ -293,6 +371,24 @@ int query_rmdirentry(MYSQL *mysql, const char *name, long parent)
     return 0;
 }
 
+/**
+ * Create an inode.  This function creates a child entry of the specified dev_t
+ * type and mode in the "parent" directory given as the "parent".  Any parent
+ * directory information (ie "dirname(path)") is stripped out, leaving only
+ * the base pathname, but it has to be there (perhaps a bug?) since this
+ * function wants to strip out the path information that might conflict with
+ * the parent node's pathname.
+ *
+ * @see http://linux.die.net/man/2/mknod
+ *
+ * @return ID of new inode, or -ENOENT if the path contains no parent directory "/"
+ * @param mysql handle to connection to the database
+ * @param path name of directory to create
+ * @param mode access mode of new directory
+ * @param rdev type of inode to create
+ * @param parent inode of directory holding files (parent inode)
+ * @param alloc_data (unused)
+ */
 long query_mknod(MYSQL *mysql, const char *path, mode_t mode, dev_t rdev,
                 long parent, int alloc_data)
 {
@@ -346,11 +442,39 @@ err_out:
     return ret;
 }
 
+/**
+ * Create a directory.  This is really a wrapper to a specific invocation of query_mknod().
+ *
+ * @see http://linux.die.net/man/2/mkdir
+ *
+ * @return ID of new inode, or -ENOENT if the path contains no parent directory "/"
+ * @param mysql handle to connection to the database
+ * @param path name of directory to create
+ * @param mode access mode of new directory
+ * @param parent inode of directory holding files (parent inode)
+ */
 long query_mkdir(MYSQL *mysql, const char *path, mode_t mode, long parent)
 {
     return query_mknod(mysql, path, S_IFDIR | mode, 0, parent, 0);
 }
 
+/**
+ * Read a directory.  This is done by listing the nodes with a given node as
+ * parent, calling the filler parameter (pointer-to-function) for each item.
+ * The set of results is not ordered, so results would be in the "natural order"
+ * of the database.
+ *
+ * for the kernel's implementation of a chmod() call in an inode on the FUSE
+ * filesystem.
+ *
+ * @see http://linux.die.net/man/2/readdir
+ *
+ * @return 0 on success; -EIO on failure (non-zero return from mysql_query() function)
+ * @param mysql handle to connection to the database
+ * @param inode inode of directory holding files (parent inode)
+ * @param buf buffer to pass to filler function
+ * @param filler fuse_fill_dir_t function-pointer used to process each directory entry
+ */
 int query_readdir(MYSQL *mysql, long inode, void *buf, fuse_fill_dir_t filler)
 {
     int ret;
@@ -382,6 +506,18 @@ int query_readdir(MYSQL *mysql, long inode, void *buf, fuse_fill_dir_t filler)
     return ret;
 }
 
+/**
+ * Change the mode attribute in the inode entry.  Should be the entry-point
+ * for the kernel's implementation of a chmod() call in an inode on the FUSE
+ * filesystem.
+ *
+ * @see http://linux.die.net/man/2/chmod
+ *
+ * @return 0 on success; -EIO on failure (non-zero return from mysql_query() function)
+ * @param mysql handle to connection to the database
+ * @param inode inode to update
+ * @param mode new mode to set into the inode
+ */
 int query_chmod(MYSQL *mysql, long inode, mode_t mode)
 {
     int ret;
@@ -403,6 +539,19 @@ int query_chmod(MYSQL *mysql, long inode, mode_t mode)
     return 0;
 }
 
+/**
+ * Change the uid, gid attributes in the inode entry.  Should be
+ * the entry-point for the kernel's implementation of a chown() call in an inode
+ * on the FUSE filesystem.
+ *
+ * @see http://linux.die.net/man/2/chown
+ *
+ * @return 0 on success; -EIO on failure (non-zero return from mysql_query() function)
+ * @param mysql handle to connection to the database
+ * @param inode inode to update
+ * @param uid uid to set (-1 to make no change to uid)
+ * @param gid gid to set (-1 to make no change to gid)
+ */
 int query_chown(MYSQL *mysql, long inode, uid_t uid, gid_t gid)
 {
     int ret;
@@ -432,6 +581,19 @@ int query_chown(MYSQL *mysql, long inode, uid_t uid, gid_t gid)
     return 0;
 }
 
+/**
+ * Change the utime attributes atime and mtime in the inode entry.  Should be
+ * the entry-point for the kernel's implementation of a utime() call in an inode
+ * on the FUSE filesystem.
+ *
+ * @see http://linux.die.net/man/2/utime
+ * @see http://linux.die.net/man/2/stat
+ *
+ * @return 0 on success; -EIO on failure (non-zero return from mysql_query() function)
+ * @param mysql handle to connection to the database
+ * @param inode inode to update the atime, mtime
+ * @param time utimbuf with new actime, modtime, to set into access and modification times
+ */
 int query_utime(MYSQL *mysql, long inode, struct utimbuf *time)
 {
     int ret;
@@ -455,6 +617,20 @@ int query_utime(MYSQL *mysql, long inode, struct utimbuf *time)
     return 0;
 }
 
+/**
+ * Read a number of bytes (perhaps larger than BLOCK_SIZE) at an offset from
+ * a file.  The function does this by reading each block in succession, copying
+ * the block contents into the target buffer.  The (offset % DATA_BLOCK_SIZE)
+ * issue is handled by shifting the copy slightly.
+ *
+ * @return < 0 in case of errors (propagating result of write_one_block() )
+ * @return > 0 number of bytes read (should equal size parameter)
+ * @param mysql handle to connection to the database
+ * @param inode inode of the file in question
+ * @param buf the buffer to copy read bytes
+ * @param size number of bytes to read
+ * @param offset offset within the file to read from
+ */
 int query_read(MYSQL *mysql, long inode, const char *buf, size_t size,
                off_t offset)
 {
@@ -536,6 +712,27 @@ go_away:
     return length;
 }
 
+/**
+ * Writes a specific block into the database
+ *
+ * This function takes an early bail-out if the size to write is zero, or if the total size to write exceeds the block size.
+ *
+ * This function checks to see if the previous block didn't exist -- in such
+ * case, it then writes out a zero-length block.  The function then creates a
+ * statement that has a '?' token representing the new data.  If the previous
+ * data didn't exist, the function uses a "SET x == y" format; otherwise, a
+ * "CONCAT (data, ?)".  The statement is snprintf'd, prepared, and executed; the
+ * result produces either a 0 on success, or a -EIO on failure (with an error
+ * message logged).
+ *
+ * @return 0 on success; -EIO on failure
+ * @param mysql handle to connection to the database
+ * @param inode inode to write out the data block on
+ * @param seq sequence number of datablock to write
+ * @param data buffer of content to write
+ * @param size size_t length of data
+ * @param offset what offset within the datablock to write the data
+ */
 static int write_one_block(MYSQL *mysql, long inode,
 				 unsigned long seq,
 				 const char *data, size_t size,
@@ -666,6 +863,19 @@ err_out:
 	return -EIO;
 }
 
+/**
+ * Write a number of bytes (perhaps larger than BLOCK_SIZE) at an offset into
+ * a file.  The function does this by writing the first partial block, then
+ * writing successive blocks until the full @c size is written.
+ *
+ * @return < 0 in case of errors (propagating result of write_one_block() )
+ * @return > 0 number of bytes written (should equal size parameter)
+ * @param mysql handle to connection to the database
+ * @param inode inode of the file in question
+ * @param data the buffer of data to write
+ * @param size number of bytes to write
+ * @param offset offset within the file to write to
+ */
 int query_write(MYSQL *mysql, long inode, const char *data, size_t size,
                 off_t offset)
 {
@@ -715,6 +925,18 @@ int query_write(MYSQL *mysql, long inode, const char *data, size_t size,
     return ret_size;
 }
 
+/**
+ * Check the size of a file.  Check the value by reading the attribute stored
+ * in the inode table itself.  The function does not summarize the size "live"
+ * by summing the size of each data block; rather this value is updated in
+ * query_fsck(), query_truncate(), write_one_block().  This trust in the
+ * various write functions optimizes this function's response time and
+ * reduces DB load.
+ *
+ * @return total size of the file at the inode as represented in the inode block
+ * @param mysql handle to connection to the database
+ * @param inode inode of the file in question
+ */
 ssize_t query_size(MYSQL *mysql, long inode)
 {
     size_t ret;
@@ -759,6 +981,17 @@ ssize_t query_size(MYSQL *mysql, long inode)
     return ret;
 }
 
+/**
+ * Returns the size of the given block (inode and sequence number).  Used only by write_one_block(), which is static, so this one can/should be static?
+ *
+ * @return -ENXIO if the inode/seq pair is not found (zero rows returned, implying that block doesn't exist)
+ * @return -EIO if no row is returned (implying an error in the query response, signaled by mysql_fetch_row() returning NULL)
+ * @return 0 if the rown is NULL (implying no result?)
+ * @return 1 - DATA_BLOCK_SIZE (size of the actual block)
+ * @param mysql handle to connection to the database
+ * @param inode inode of the file in question
+ * @param seq sequence number of datablock to check
+ */
 ssize_t query_size_block(MYSQL *mysql, long inode, unsigned long seq)
 {
     size_t ret;
@@ -803,6 +1036,17 @@ ssize_t query_size_block(MYSQL *mysql, long inode, unsigned long seq)
     return ret;
 }
 
+/**
+ * Rename a file.  Called by mysqlfs_rename()
+ *
+ * @return 0 on success; -EIO if the mysql_query() is non-zero (and the error is logged)
+ *
+ * @see http://linux.die.net/man/2/rename
+ *
+ * @param mysql handle to the database
+ * @param from name of file before the rename
+ * @param to name of file after the rename
+ */
 int query_rename(MYSQL *mysql, const char *from, const char *to)
 {
     int ret;
@@ -857,6 +1101,16 @@ int query_rename(MYSQL *mysql, const char *from, const char *to)
     return 0;
 }
 
+/**
+ * Mark the file in-use: like a lock-manager, increment the count of users of
+ * this file so that deletions at the inode level cannot result in purged data
+ * while the file is in-use.
+ *
+ * @return 0 on success; -EIO if the mysql_query() is non-zero (and the error is logged)
+ * @param mysql handle to the database
+ * @param inode inode of the file that is to be marked deleted 
+ * @param increment how many additional "uses" to increment in the file's inode
+ */
 int query_inuse_inc(MYSQL *mysql, long inode, int increment)
 {
     int ret;
@@ -879,6 +1133,14 @@ int query_inuse_inc(MYSQL *mysql, long inode, int increment)
     return 0;
 }
 
+/**
+ * Purge inodes from files previously marked deleted (ie query_set_deleted() )
+ * and are no longer in-use.  Called by mysqlfs_unlink() and mysqlfs_release()
+ *
+ * @return 0 on success; -EIO if the mysql_query() is non-zero (and the error is logged)
+ * @param mysql handle to the database
+ * @param inode inode of the file that is to be marked deleted 
+ */
 int query_purge_deleted(MYSQL *mysql, long inode)
 {
     int ret;
@@ -900,6 +1162,15 @@ int query_purge_deleted(MYSQL *mysql, long inode)
     return 0;
 }
 
+/**
+ * Mark the inode deleted where the name of the tree column is NULL.  This
+ * allows files that are still in use to be deleted without wiping out their
+ * underlying data.
+ *
+ * @return 0 on success; -EIO if the mysql_query() is non-zero (and the error is logged)
+ * @param mysql handle to the database
+ * @param inode inode of the file that is to be marked deleted
+ */
 int query_set_deleted(MYSQL *mysql, long inode)
 {
     int ret;
@@ -922,6 +1193,19 @@ int query_set_deleted(MYSQL *mysql, long inode)
     return 0;
 }
 
+/**
+ * Clean filesystem.  Only run in pool_check_mysql_setup() if mysqlfs_opt::fsck == 1
+ *
+ * -# delete inodes with deleted==1
+ * -# delete direntries without corresponding inode
+ * -# set inuse=0 for all inodes
+ * -# delete data without existing inode
+ * -# synchronize inodes.size=data.LENGTH(data)
+ * -# optimize tables
+ *
+ * @return return from call to mysql_query()
+ * @param mysql handle to database connection
+ */
 int query_fsck(MYSQL *mysql)
 {
 

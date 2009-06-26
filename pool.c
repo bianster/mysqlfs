@@ -31,9 +31,10 @@
 
 struct mysqlfs_opt *opt;
 
+/** Used in lifo_put() and lifo_get() to maintain a LIFO list. */
 struct pool_lifo {
-    struct pool_lifo	*next;
-    void		*conn;
+    struct pool_lifo	*next;		/**< next item in list */
+    void		*conn;		/**< payload if this item in the list */
 };
 
 /* We have only one pool -> use global variables. */

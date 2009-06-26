@@ -1,0 +1,40 @@
+/**
+ * This is a bogus sourcefile; it's used to provide an easily-searched document from which Doxygen will build the main page
+ */
+
+/** \mainpage MySQLfs Code Reference
+ * - Project: http://mysqlfs.sourceforge.net/
+ * - Download
+ *   - 0.3.1 (2006-10-03): https://sourceforge.net/project/showfiles.php?group_id=129981&package_id=142430&release_id=452358
+ *   - 0.4.0-rc1 (2007-03-29): https://sourceforge.net/project/showfiles.php?group_id=129981&package_id=142430&release_id=497163 (@ref Versions 0.3.99.1 in RPM)
+ *
+ * \section intro_sec Introduction
+ *
+ * MySQLfs connects FUSE callbacks to a mysqlfs_*() API, which gets a connection using pool_get(), uses a query_*() API to execute many of the actual functions, and releases the connection using pool_put().
+ * @dot
+   digraph stack {
+      node [shape=record, fontname=Helvetica, fontsize=10];
+      m [ label="mysqlfs_*()" ];
+      mt [ label="mysqlfs_truncate()" ];
+      pg [ label="pool_get()" URL="\ref pool_get()" ];
+      qt [ label="query_truncate()" URL="\ref query_truncate()" ];
+      pp [ label="pool_put()" URL="\ref pool_put()" ];
+      q [ label="query_*()" URL="" ];
+      m -> "pool_get()" -> q -> "pool_put()"  [ arrowhead="open", style="dashed" ];
+      mt -> pg -> qt -> pp [ arrowhead="open", style="dashed" ];
+   }
+   @enddot
+ *
+ * \section install_sec Installation
+ *
+ * \subsection RPMinst RPM Installation
+ * - rpm -i @PACKAGE@-@VERSION@-44.i386.rpm
+ * - yum -y install @PACKAGE@-@VERSION@-44.i386.rpm
+ * - apt-get install ./@PACKAGE@-@VERSION@-44.i386.rpm
+ *
+ * \subsection Slackinst Slackware Installation
+ * -# tar xzf @PACKAGE@-@VERSION@.tar.gz
+ * -# cd @PACKAGE@-@VERSION@
+ * -# ./configure
+ * -# make install
+ */

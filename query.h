@@ -9,12 +9,20 @@
 
 /** @file */
 
+/**
+ * Scratchpad for a set of results of a query regarding the blocks of a file.
+ * Used by query_truncate(), query_write(), and query_read() via
+ * fill_data_blocks_info(), this function records some ranges of blocks for
+ * use in mass-write, read, or deletion.
+ *
+ * Stunning description, I'm sure.
+ */
 struct data_blocks_info {
-    unsigned long	seq_first,	/* Sequence ID of 1st and last block.  */
-			seq_last;
-    size_t		length_first,	/* Length of data for reading / writing.  */
-			length_last;
-    off_t		offset_first;	/* Offset in 1st block.  */
+    unsigned long	seq_first,	/**< Sequence ID of first block */
+			seq_last;	/**< sequence ID of last block */
+    size_t		length_first,	/**< Length of first datablock for reading / writing.  */
+			length_last;	/**< Length of last datablock after reading / writing. */
+    off_t		offset_first;	/**< Offset in 1st block.  */
 };
 
 long query_inode(MYSQL *mysql, const char* path);
@@ -31,8 +39,8 @@ int query_read(MYSQL *mysql, long inode, const char* buf, size_t size, off_t off
 int query_write(MYSQL *mysql, long inode, const char* buf, size_t size, off_t offset);
 int query_truncate(MYSQL *mysql, const char *path, off_t length);
 
-int query_symlink(MYSQL *mysql, const char* from, const char* to);
-int query_readlink(MYSQL *mysql, const char* path);
+int query_symlink(MYSQL *mysql, const char* from, const char* to);	/**< NOT IMPLEMENTED NOR CALLED */
+int query_readlink(MYSQL *mysql, const char* path);			/**< NOT IMPLEMENTED NOR CALLED */
 
 int query_rename(MYSQL *mysql, const char* from, const char* to);
 

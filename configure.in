@@ -26,6 +26,8 @@ AC_PROG_CC
 AC_PROG_LIBTOOL
 AC_CHECK_PROGS(DOXYGEN, [doxygen], missing)
 AM_CONDITIONAL(DO_DOXYGEN, test x$DOXYGEN != xmissing)
+AC_CHECK_PROGS(RPMBUILD, [rpmbuild], missing)
+AM_CONDITIONAL(DO_RPMBUILD, test x$RPMBUILD != xmissing)
 
 AC_CHECK_PROG(HAVE_DOXYGEN,[doxygen],yes)
 AC_CHECK_PROG(HAVE_DOT,[dot],YES,NO)
@@ -112,4 +114,4 @@ yes
 ])
 
 CFLAGS="$CFLAGS $CFLAGS_ADD"
-AC_OUTPUT(Makefile tests-autotest/Makefile tests-autotest/atlocal tests-autotest/testsuite.at mysqlfs.spec:pkg/mysqlfs.spec.in Doxyfile:pkg/Doxyfile.in)
+AC_OUTPUT(Makefile tests-autotest/Makefile tests-autotest/atlocal tests-autotest/testsuite.at mysqlfs.spec:pkg/mysqlfs.spec.in Doxyfile:pkg/Doxyfile.in pkg/doc-mainpage.c)
