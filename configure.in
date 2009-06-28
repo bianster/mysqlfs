@@ -54,11 +54,14 @@ for i in /usr/local/fuse /usr/local /usr; do
     break
   fi
 done
-FUSE_LDFLAGS="-L${FUSE_LIB_DIR}"
-FUSE_CFLAGS="-I${FUSE_INC_DIR}"
-LDFLAGS="$LDFLAGS $FUSE_LDFLAGS"
-CFLAGS="$CFLAGS $FUSE_CFLAGS"
-CPPFLAGS="$CPPFLAGS $FUSE_CFLAGS"
+if test x${FUSE_LIB_DIR} != x
+then
+  FUSE_LDFLAGS="-L${FUSE_LIB_DIR}"
+  FUSE_CFLAGS="-I${FUSE_INC_DIR}"
+  LDFLAGS="$LDFLAGS $FUSE_LDFLAGS"
+  CFLAGS="$CFLAGS $FUSE_CFLAGS"
+  CPPFLAGS="$CPPFLAGS $FUSE_CFLAGS"
+fi
 
 MYSQL_CONFIG=$(which mysql_config)
 if test "$MYSQL_CONFIG"; then
@@ -78,17 +81,20 @@ else
       break
     fi
   done
-  MYSQL_LDFLAGS="-L${MYSQL_LIB_DIR}"
-  MYSQL_CFLAGS="-I${MYSQL_INC_DIR}"
+  if test x${MYSQL_LIB_DIR} != x
+  then
+    MYSQL_LDFLAGS="-L${MYSQL_LIB_DIR}"
+    MYSQL_CFLAGS="-I${MYSQL_INC_DIR}"
+  fi
 fi
 LDFLAGS="$LDFLAGS $MYSQL_LDFLAGS"
 CFLAGS="$CFLAGS $CFLAGS_ADD $MYSQL_CFLAGS"
 CPPFLAGS="$CPPFLAGS $MYSQL_CFLAGS"
 
 dnl Checks for libraries.
-AC_CHECK_LIB(pthread, pthread_create,, AC_MSG_ERROR([Please install pthreads library first.]))
-AC_CHECK_LIB(mysqlclient, mysql_init,, AC_MSG_ERROR([Please install mysqlclient library first.]))
-AC_CHECK_LIB(fuse, fuse_main,, AC_MSG_ERROR([Please install fuse library first.]))
+AC_SEARCH_LIBS(mysql_init, mysqlclient,, AC_MSG_ERROR([Please install mysqlclient library first.]))
+AC_SEARCH_LIBS(pthread_create, pthread,, AC_MSG_ERROR([Please install pthreads library first.]))
+AC_SEARCH_LIBS(fuse_main, fuse,, AC_MSG_ERROR([Please install fuse library first.]))
 
 dnl Checks for header files. (mac -- and BSD? -- have statfs in mount.h)
 AC_CHECK_HEADERS(stdio.h sys/param.h sys/mount.h)
