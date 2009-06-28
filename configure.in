@@ -15,8 +15,9 @@ AC_DEFINE(MYSQL_MIN_VERSION, 50000, [Minimal supported MySQL version])
 
 AC_DEFINE(_FILE_OFFSET_BITS,64,[Use 64 bits file offsets])
 
-AC_ARG_WITH(mysql, [  --with-mysql=DIR    mysql directory ])
-AC_ARG_WITH(fuse, [  --with-fuse=DIR    fuse directory ])
+AC_ARG_WITH(mysql, [ AS_HELP_STRING([--with-mysql=DIR], [mysql directory ])])
+AC_ARG_WITH(fuse, [ AS_HELP_STRING([--with-fuse=DIR],[fuse directory ])])
+AC_ARG_WITH(testfile, [ AS_HELP_STRING([--with-testfile=FILE],[file to test copying to the filesystem])],,[with_testfile=configure])
 
 dnl Note: this is a GCC extension, this kills portability
 CFLAGS_ADD="-Wall -Werror"
@@ -28,9 +29,14 @@ AC_CHECK_PROGS(DOXYGEN, [doxygen], missing)
 AM_CONDITIONAL(DO_DOXYGEN, test x$DOXYGEN != xmissing)
 AC_CHECK_PROGS(RPMBUILD, [rpmbuild], missing)
 AM_CONDITIONAL(DO_RPMBUILD, test x$RPMBUILD != xmissing)
-
 AC_CHECK_PROG(HAVE_DOXYGEN,[doxygen],yes)
 AC_CHECK_PROG(HAVE_DOT,[dot],YES,NO)
+AC_CHECK_PROGS(MD5SUM, [md5 md5sum], missing)
+AC_CHECK_PROGS(MYSQL, [mysql /usr/local/bin/mysql /usr/local/mysql/bin/mysql], missing)
+
+testfile_md5sum=`cat $with_testfile|${MD5SUM}`
+AC_SUBST(with_testfile)
+AC_SUBST(testfile_md5sum)
 
 dnl Because I keep forgetting that we need to treat MacOSX like BSD
 case $ac_cv_build in
