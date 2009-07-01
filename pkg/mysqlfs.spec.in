@@ -29,6 +29,11 @@ make install DESTDIR=%{buildroot}
 %{_bindir}/mysqlfs
 
 %changelog
+* Mon Jun 29 2009 Allan Clark <allanc@chickenandporn.com> - 0.3.99.2
+- resolves bug # 1773343 (usage() ) (includes switch to fuse_opt option-parsing)
+- resolves bug # 1849644 (configure)
+- resolves bug # 2096705 (format string) (no-op: the formatting looks fine)
+
 * Sun Jun 21 2009 Allan Clark <allanc@chickenandporn.com> - 0.3.99.1
 - checks for doxygen, builds API docs
 
