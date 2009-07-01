@@ -1,11 +1,13 @@
 # $Id: Makefile.am,v 1.4 2006/10/02 22:34:03 ludvigm Exp $
 
 bin_PROGRAMS = mysqlfs
+schema_DATA = schema.sql install.sql
+schemadir = $(datadir)/$(distdir)
 
 # because the source is not in a subdir, we cannot just put the tests in a SUBDIRS= :(
 check-recursive : mysqlfs
 
-EXTRA_DIST = schema.sql mysqlfs.spec
+EXTRA_DIST = $(schema_DATA) mysqlfs.spec
 
 SUBDIRS = tests-autotest
 
@@ -23,7 +25,7 @@ endif
 
 if DO_RPMBUILD
 release = $(rpm --query --queryformat="%{RELEASE}\n" --specfile @PACKAGE@.spec |head -1)
-rpm: @PACKAGE@-@VERSION@.tar.gz @PACKAGE@.spec
-	$(RPMBUILD) -ta $<
+rpm: dist-bzip2 @PACKAGE@.spec
+	$(RPMBUILD) -ta $(distdir).tar.bz2
 endif
 

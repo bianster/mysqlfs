@@ -7,6 +7,7 @@ AM_INIT_AUTOMAKE([foreign dist-bzip2])
 AC_CONFIG_HEADERS(config.h)
 AC_CONFIG_SRCDIR([configure.in])
 AC_CONFIG_TESTDIR([tests-autotest])
+AC_PREFIX_PROGRAM([id])
 
 AC_ENABLE_SHARED(no)
 

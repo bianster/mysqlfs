@@ -27,17 +27,23 @@ make install DESTDIR=%{buildroot}
 %files
 %defattr(-, root, root, 0755)
 %{_bindir}/mysqlfs
+%{_datadir}/%{name}-%{version}/schema.sql
+%{_datadir}/%{name}-%{version}/install.sql
 
 %changelog
-* Mon Jun 29 2009 Allan Clark <allanc@chickenandporn.com> - 0.3.99.2
+* Wed Jul 1 2009 Allan Clark <allanc@chickenandporn.com> - 0.3.99.2
+- meatware version 0.4.0-rc3
+- changes based on comments in http://www.linux.com/archive/feature/127055 (ie install.sql)
 - resolves bug # 1773343 (usage() ) (includes switch to fuse_opt option-parsing)
 - resolves bug # 1849644 (configure)
 - resolves bug # 2096705 (format string) (no-op: the formatting looks fine)
 
 * Sun Jun 21 2009 Allan Clark <allanc@chickenandporn.com> - 0.3.99.1
+- meatware version 0.4.0-rc2
 - checks for doxygen, builds API docs
 
 * Thu Jun 4 2009 Allan Clark <allanc@chickenandporn.com> - 0.3.99.0
+- meatware version 0.4.0-rc1
 - passes distcheck
 - Initial package (please, how about a basic X.Y.Z.Q version?  strcmp("0.4.0-rc1","0.4.0") is misleading.
 
