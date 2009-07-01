@@ -31,6 +31,7 @@
 #ifdef DEBUG
 #include <mcheck.h>
 #endif
+#include <stddef.h>
 
 #include "mysqlfs.h"
 #include "query.h"
@@ -580,84 +581,114 @@ static struct fuse_operations mysqlfs_oper = {
 /** print out a brief usage aide-memoire to stderr */
 void usage(){
     fprintf(stderr,
-            "usage: mysqlfs -ohost=host -ouser=user -opasswd=passwd "
+            "usage: mysqlfs [opts] <mountpoint>\n\n");
+    fprintf(stderr,
+            "       mysqlfs [-osocket=/tmp/mysql.sock] [-oport=####] -ohost=host -ouser=user -opassword=password "
             "-odatabase=database ./mountpoint\n");
+    fprintf(stderr,
+            "       mysqlfs [-d] [-ologfile=filename] -ohost=host -ouser=user -opassword=password "
+            "-odatabase=database ./mountpoint\n");
+    fprintf(stderr,
+            "       mysqlfs [-mycnf_group=group_name] -ohost=host -ouser=user -opassword=password "
+            "-odatabase=database ./mountpoint\n");
+    fprintf(stderr, "\n(mimick mysql options)\n");
+    fprintf(stderr,
+            "       mysqlfs --host=host --user=user --password=password --database=database ./mountpoint\n");
+    fprintf(stderr,
+            "       mysqlfs -h host -u user --password=password -D database ./mountpoint\n");
 }
+
+/** macro to set a call value with a default -- defined yet? */
+#define MYSQLFS_OPT_KEY(t, p, v) { t, offsetof(struct mysqlfs_opt, p), v }
+
+/** FUSE_OPT_xxx keys defines for use with fuse_opt_parse() */
+enum
+  {
+    KEY_BACKGROUND,	/**< debug: key for option to activate mysqlfs::bg to force-background the server */
+    KEY_DEBUG_DNQ,	/**< debug: Dump (Config) and Quit */
+    KEY_HELP,
+    KEY_VERSION,
+  };
+
+/** fuse_opt for use with fuse_opt_parse() */
+static struct fuse_opt mysqlfs_opts[] =
+  {
+    MYSQLFS_OPT_KEY(  "background",	bg,	1),
+    MYSQLFS_OPT_KEY(  "database=%s",	db,	1),
+    MYSQLFS_OPT_KEY("--database=%s",	db,	1),
+    MYSQLFS_OPT_KEY( "-D %s",		db,	1),
+    MYSQLFS_OPT_KEY(  "fsck",		fsck,	1),
+    MYSQLFS_OPT_KEY(  "fsck=%d",	fsck,	1),
+    MYSQLFS_OPT_KEY("--fsck=%d",	fsck,	1),
+    MYSQLFS_OPT_KEY("nofsck",		fsck,	0),
+    MYSQLFS_OPT_KEY(  "host=%s",	host,	0),
+    MYSQLFS_OPT_KEY("--host=%s",	host,	0),
+    MYSQLFS_OPT_KEY( "-h %s",		host,	0),
+    MYSQLFS_OPT_KEY(  "logfile=%s",	logfile,	0),
+    MYSQLFS_OPT_KEY("--logfile=%s",	logfile,	0),
+    MYSQLFS_OPT_KEY(  "mycnf_group=%s",	mycnf_group,	0), /* Read defaults from specified group in my.cnf  -- Command line options still have precedence.  */
+    MYSQLFS_OPT_KEY("--mycnf_group=%s",	mycnf_group,	0),
+    MYSQLFS_OPT_KEY(  "password=%s",	passwd,	0),
+    MYSQLFS_OPT_KEY("--password=%s",	passwd,	0),
+    MYSQLFS_OPT_KEY(  "port=%d",	port,	0),
+    MYSQLFS_OPT_KEY("--port=%d",	port,	0),
+    MYSQLFS_OPT_KEY( "-P %d",		port,	0),
+    MYSQLFS_OPT_KEY(  "socket=%s",	socket,	0),
+    MYSQLFS_OPT_KEY("--socket=%s",	socket,	0),
+    MYSQLFS_OPT_KEY( "-S %s",		socket,	0),
+    MYSQLFS_OPT_KEY(  "user=%s",	user,	0),
+    MYSQLFS_OPT_KEY("--user=%s",	user,	0),
+    MYSQLFS_OPT_KEY( "-u %s",		user,	0),
+
+    FUSE_OPT_KEY("debug-dnq",	KEY_DEBUG_DNQ),
+    FUSE_OPT_KEY("-v",		KEY_VERSION),
+    FUSE_OPT_KEY("--version",	KEY_VERSION),
+    FUSE_OPT_KEY("--help",	KEY_HELP),
+    FUSE_OPT_END
+  };
+
+
 
 static int mysqlfs_opt_proc(void *data, const char *arg, int key,
                             struct fuse_args *outargs){
     struct mysqlfs_opt *opt = (struct mysqlfs_opt *) data;
-    char *str;
 
-    if(key != FUSE_OPT_KEY_OPT){
-        fuse_opt_add_arg(outargs, arg);
-        return 0;
-    }
-
+    switch (key)
+    {
+        case FUSE_OPT_KEY_OPT: /* dig through the list for matches */
     /*
      * There are primitives for this in FUSE, but no need to change at this point
      */
+            break;
 
-    if(!strncmp(arg, "host=", strlen("host="))){
-        str = strchr(arg, '=') + 1;
-        opt->host = str;
-        return 0;
-    }
+        case KEY_DEBUG_DNQ:
+        /*
+         * Debug: Dump Config and Quit -- used to debug options-handling changes
+         */
 
-    if(!strncmp(arg, "user=", strlen("user="))){
-        str = strchr(arg, '=') + 1;
-        opt->user = str;
-        return 0;
-    }
+            fprintf (stderr, "DEBUG: Dump and Quit\n\n");
+            fprintf (stderr, "connect: mysql://%s:%s@%s:%d/%s\n", opt->user, opt->passwd, opt->host, opt->port, opt->db);
+            fprintf (stderr, "connect: sock://%s\n", opt->socket);
+            fprintf (stderr, "fsck? %s\n", (opt->fsck ? "yes" : "no"));
+            fprintf (stderr, "group: %s\n", opt->mycnf_group);
+            fprintf (stderr, "pool: %d initial connections\n", opt->init_conns);
+            fprintf (stderr, "pool: %d idling connections\n", opt->max_idling_conns);
+            fprintf (stderr, "logfile: file://%s\n", opt->logfile);
+            fprintf (stderr, "bg? %s (debug)\n\n", (opt->bg ? "yes" : "no"));
 
-    if(!strncmp(arg, "password=", strlen("password="))){
-        str = strchr(arg, '=') + 1;
-        opt->passwd = str;
-        return 0;
-    }
+            exit (2);
 
-    if(!strncmp(arg, "database=", strlen("database="))){
-        str = strchr(arg, '=') + 1;
-        opt->db = str;
-        return 0;
-    }
+        case KEY_HELP: /* trigger usage call */
+	    usage ();
+            exit (0);
 
-    if(!strncmp(arg, "port=", strlen("port="))){
-        str = strchr(arg, '=') + 1;
-	if (sscanf(str, "%u", &opt->port) != 1)
-	    return -1;
-        return 0;
-    }
+        case KEY_VERSION: /* show version and quit */
+	    fprintf (stderr, "%s-%s fuse-%2.1f\n\n", PACKAGE_TARNAME, PACKAGE_VERSION, ((double) FUSE_USE_VERSION)/10.0);
+	    exit (0);
 
-    if(!strncmp(arg, "socket=", strlen("socket="))){
-        str = strchr(arg, '=') + 1;
-        opt->socket = str;
-        return 0;
-    }
-
-    if(!strncmp(arg, "fsck=", strlen("fsck="))){
-        str = strchr(arg, '=') + 1;
-        opt->fsck = atoi(str);
-        return 0;
-    }
-
-    /* Read defaults from specified group in my.cnf
-     * Command line options still have precedence.  */
-    if(!strncmp(arg, "mycnf_group=", strlen("mycnf_group="))){
-        str = strchr(arg, '=') + 1;
-        opt->mycnf_group = str;
-        return 0;
-    }
-
-    if(!strncmp(arg, "logfile=", strlen("logfile="))){
-        str = strchr(arg, '=') + 1;
-        opt->logfile = str;
-        return 0;
-    }
-
-    if(!strncmp(arg, "background", strlen("background"))){
-        opt->bg = 1;
-        return 0;
+        default: /* key != FUSE_OPT_KEY_OPT */
+            fuse_opt_add_arg(outargs, arg);
+            return 0;
     }
 
     fuse_opt_add_arg(outargs, arg);
@@ -679,7 +710,7 @@ int main(int argc, char *argv[])
 
     log_file = stderr;
 
-    fuse_opt_parse(&args, &opt, NULL, mysqlfs_opt_proc);
+    fuse_opt_parse(&args, &opt, mysqlfs_opts, mysqlfs_opt_proc);
 
     if (pool_init(&opt) < 0) {
         log_printf(LOG_ERROR, "Error: pool_init() failed\n");
