@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: pool.h,v 1.4 2006/09/17 11:09:32 ludvigm Exp $
+  $Id$
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.

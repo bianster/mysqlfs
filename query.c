@@ -2,7 +2,7 @@
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
   Copyright (C) 2006,2007 Michal Ludvig <michal@logix.cz>
-  $Id: query.c,v 1.16 2007/03/28 13:05:48 ludvigm Exp $
+  $Id$
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.

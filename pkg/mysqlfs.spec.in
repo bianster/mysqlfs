@@ -31,6 +31,9 @@ make install DESTDIR=%{buildroot}
 %{_datadir}/%{name}-%{version}/install.sql
 
 %changelog
+* Sun Jul 12 2009 Allan Clark <allanc@chickenandporn.com> - 0.4.0
+- promoted 0.3.99.2 (meatware version 0.4.0-rc3) to 0.4.0, unchanged
+
 * Wed Jul 1 2009 Allan Clark <allanc@chickenandporn.com> - 0.3.99.2
 - meatware version 0.4.0-rc3
 - changes based on comments in http://www.linux.com/archive/feature/127055 (ie install.sql)

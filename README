@@ -1,6 +1,6 @@
                       mysqlfs - MySQL FileSystem
 
-$Id: README,v 1.6 2006/09/23 09:33:15 ludvigm Exp $
+$Id$
 
 MySQLfs is a FUSE filesystem driver which stores files in a MySQL database.
 
@@ -12,9 +12,9 @@ MySQLfs is a FUSE filesystem driver which stores files in a MySQL database.
 
 * Build
 
-  If compiling from CVS run ./cvs-bootstrap first.
+  If compiling from version-control, use "autoreconf -vfi" first.
 
-  For both CVS and tarball version run:
+  For both version-control and tarball version run:
   $ ./configure
   $ make
 
