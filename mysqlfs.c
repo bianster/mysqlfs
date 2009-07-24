@@ -38,13 +38,58 @@
 #include "pool.h"
 #include "log.h"
 
+#ifdef STATUSDIR
+/**
+ * not sure where we can stash this, if it even has to be a global variable.  This variable is used
+ * as-is to find pathnames (because it works in the root of the mysqlfs path) and status_pathname+1
+ * for local filenames (a bogus method of basename(status_pathname))
+ */
+static char *status_pathname = "/"STATUSDIR;
+static int len_status_pathname = 8;
+#define inode_status_xml -3
+#define inode_status_txt -4
+static int snprint_status(char *, size_t, struct mysqlfs_opt *, long);
+
+/* it's a bit of a kludge to set a pointer to a structure in the mainfunc, but it was breaking (<blush>), need to clean this up later */
+struct mysqlfs_opt *theopts;
+#endif
+
 static int mysqlfs_getattr(const char *path, struct stat *stbuf)
 {
     int ret;
     MYSQL *dbconn;
+#ifdef STATUSDIR
+    char buf[8 * 1024];
+#endif
 
     // This is called far too often
     log_printf(LOG_D_CALL, "mysqlfs_getattr(\"%s\")\n", path);
+
+#ifdef STATUSDIR
+    if (0 == strncmp (path, status_pathname, len_status_pathname))
+    {
+        char *a = (char *) path + len_status_pathname;
+
+        log_printf(LOG_D_CALL, "%s(\"%s\")(@%d)\n", __FUNCTION__, path, __LINE__);
+        stbuf->st_mode = S_IRUSR|S_IXUSR | S_IRGRP|S_IXGRP | S_IROTH|S_IXOTH;
+        stbuf->st_nlink = 1;
+
+        if (0 == *a)
+            stbuf->st_mode |= S_IFDIR;
+        else
+        {
+            stbuf->st_mode |= S_IFREG;
+            if (0 == strcmp ("/txt", a))
+                stbuf->st_size = snprint_status (buf, sizeof(buf), theopts, inode_status_txt);
+            else if (0 == strcmp ("/xml", a))
+                stbuf->st_size = snprint_status (buf, sizeof(buf), theopts, inode_status_xml);
+            else
+                stbuf->st_size = 0;
+        }
+
+        return 0;
+    }
+#endif
 
     memset(stbuf, 0, sizeof(struct stat));
 
@@ -85,6 +130,20 @@ static int mysqlfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
     log_printf(LOG_D_CALL, "mysqlfs_readdir(\"%s\")\n", path);
 
+#ifdef STATUSDIR
+    if (0 == strcmp (path, status_pathname))
+    {
+        /* if printing the bogus "status" directory, dump the content and get out */
+        log_printf(LOG_D_CALL, "mysqlfs_readdir(\"%s\")(@%d)\n", path, __LINE__);
+        filler(buf, ".", NULL, 0);
+        filler(buf, "..", NULL, 0);
+        filler(buf, "txt", NULL, 0);
+        filler(buf, "xml", NULL, 0);
+
+        return 0;
+    }
+#endif
+
     if ((dbconn = pool_get()) == NULL)
       return -EMFILE;
 
@@ -98,6 +157,16 @@ static int mysqlfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     
     filler(buf, ".", NULL, 0);
     filler(buf, "..", NULL, 0);
+
+#ifdef STATUSDIR
+    /* stuff in the bogus status subdir */
+    if (0 == strcmp (path, "/"))
+    {
+        log_printf(LOG_D_CALL, "mysqlfs_readdir(\"%s\")(@%d)\n", path, __LINE__);
+        filler(buf, status_pathname+1, NULL, 0);
+    }
+#endif
+
 
     ret = query_readdir(dbconn, inode, buf, filler);
     pool_put(dbconn);
@@ -352,6 +421,28 @@ static int mysqlfs_open(const char *path, struct fuse_file_info *fi)
 
     log_printf(LOG_D_CALL, "mysqlfs_open(\"%s\")\n", path);
 
+#ifdef STATUSDIR
+    /* take a short-circuit for the bogus virtual files */
+    if (0 == strncmp (path, status_pathname, len_status_pathname))
+    {
+        char *a = (char *) path + len_status_pathname;
+
+        log_printf(LOG_D_CALL, "%s(\"%s\")(@%d)\n", __FUNCTION__, a, __LINE__);
+        if (0 == strcmp (a, "/txt"))
+        {
+            fi->fh = inode_status_txt;
+            return 0;
+        }
+        else if (0 == strcmp (a, "/xml"))
+        {
+            fi->fh = inode_status_xml;
+            return 0;
+        }
+
+        /* otherwise, fall-thru to a inode-lookup failure */
+    }
+#endif
+
     if ((dbconn = pool_get()) == NULL)
       return -EMFILE;
 
@@ -377,6 +468,52 @@ static int mysqlfs_open(const char *path, struct fuse_file_info *fi)
     return 0;
 }
 
+#ifdef STATUSDIR
+static int snprint_status(char *dest, size_t size, struct mysqlfs_opt *opt, long inode)
+{
+    /* this needs to be migrated to header files so that the maintenance of pool.c doesn't ened a lock-step maintenance of this function */
+    extern unsigned int lifo_unused_cnt;
+    extern unsigned int lifo_pool_cnt;
+
+    switch (inode)
+    {
+        case inode_status_txt: /* produce text/plain format */
+            return snprintf (dest, size, "host: %s\nuser: %s\ndb:   %s\nport: %d\nuri:  "
+                "mysql://%s@%s:%d/%s\nfsck: %slog:  %s\nconnections init: %d\nconnections idle: %d\n"
+                "connections pool: %d\nconnections unused: %d\n",
+                opt->host, opt->user, opt->db, (opt->port ? opt->port : MYSQL_PORT), opt->user, opt->host, (opt->port ? opt->port : MYSQL_PORT), opt->db,
+                (opt->fsck ? "yes" : "no"), opt->logfile, opt->init_conns, opt->max_idling_conns, lifo_pool_cnt, lifo_unused_cnt);
+
+        case inode_status_xml: /* produce text/xml format */
+            return snprintf (dest, size, "<?xml version=\"1.0\"?>\n<mysqlfs>\n  <host>%s</host>\n  <user>%s</user>\n  <db>%s</db>\n  <port>%d</port>\n"
+                "  <uri>mysql://%s@%s:%d/%s</uri>\n  <fsck>%s</fsck>\n  <log>%s</log>\n"
+                "  <connections>\n    <init>%d</init>\n    <idle>%d</idle>\n"
+                "    <pool>%d</pool>\n    <unused>%d</unused>\n  </connections>\n</mysqlfs>\n",
+                opt->host, opt->user, opt->db, (opt->port ? opt->port : MYSQL_PORT), opt->user, opt->host, (opt->port ? opt->port : MYSQL_PORT), opt->db,
+                (opt->fsck ? "yes" : "no"), opt->logfile, opt->init_conns, opt->max_idling_conns, lifo_pool_cnt, lifo_unused_cnt);
+    }
+
+    return -1;
+}
+
+static int mysqlfs_status_read(const char *subpath, char *buf, size_t size, off_t offset,
+                        struct fuse_file_info *fi)
+{
+    static char ok[8 * 1024];
+
+    int len = snprint_status(ok, sizeof(ok), theopts, fi->fh);
+    int l = ((len - offset) > size ? size : (len - offset));
+    log_printf(LOG_D_CALL, "%s(\"%s\")(%d of %d)(@%d)\n", __FUNCTION__, subpath, offset, l, __LINE__);
+
+    if (len < offset) return 0;
+
+    if (offset < len)
+        memcpy(buf, (ok + offset), l);
+
+    return l;
+}
+#endif
+
 static int mysqlfs_read(const char *path, char *buf, size_t size, off_t offset,
                         struct fuse_file_info *fi)
 {
@@ -384,6 +521,16 @@ static int mysqlfs_read(const char *path, char *buf, size_t size, off_t offset,
     MYSQL *dbconn;
 
     log_printf(LOG_D_CALL, "mysqlfs_read(\"%s\" %zu@%llu)\n", path, size, offset);
+
+#ifdef STATUSDIR
+    /* take a short-circuit for the bogus virtual files */
+    if (0 == strncmp (path, status_pathname, len_status_pathname))
+    {
+        char *a = (char *) path + len_status_pathname;
+        log_printf(LOG_D_CALL, "%s(\"%s\")(@%d)\n", __FUNCTION__, a, __LINE__);
+        return mysqlfs_status_read(a, buf, size, offset, fi);
+    }
+#endif
 
     if ((dbconn = pool_get()) == NULL)
       return -EMFILE;
@@ -417,6 +564,18 @@ static int mysqlfs_release(const char *path, struct fuse_file_info *fi)
     MYSQL *dbconn;
 
     log_printf(LOG_D_CALL, "mysqlfs_release(\"%s\")\n", path);
+
+#ifdef STATUSDIR
+    /* take a short-circuit for the bogus virtual files */
+    switch (fi->fh)
+    {
+        case inode_status_txt:
+        case inode_status_xml:
+            return 0;
+
+        /* there might be a bunch of files later; we fall-thru to the standard processing */
+    }
+#endif
 
     if ((dbconn = pool_get()) == NULL)
       return -EMFILE;
@@ -667,7 +826,7 @@ static int mysqlfs_opt_proc(void *data, const char *arg, int key,
          */
 
             fprintf (stderr, "DEBUG: Dump and Quit\n\n");
-            fprintf (stderr, "connect: mysql://%s:%s@%s:%d/%s\n", opt->user, opt->passwd, opt->host, opt->port, opt->db);
+            fprintf (stderr, "connect: mysql://%s:%s@%s:%d/%s\n", opt->user, opt->passwd, opt->host, (opt->port ? opt->port : MYSQL_PORT), opt->db);
             fprintf (stderr, "connect: sock://%s\n", opt->socket);
             fprintf (stderr, "fsck? %s\n", (opt->fsck ? "yes" : "no"));
             fprintf (stderr, "group: %s\n", opt->mycnf_group);
@@ -705,10 +864,15 @@ int main(int argc, char *argv[])
 	.init_conns	= 1,
 	.max_idling_conns = 5,
 	.mycnf_group	= "mysqlfs",
+#ifdef DEBUG
 	.logfile	= "mysqlfs.log",
+#endif
     };
 
     log_file = stderr;
+#ifdef STATUSDIR
+    theopts = &opt;
+#endif
 
     fuse_opt_parse(&args, &opt, mysqlfs_opts, mysqlfs_opt_proc);
 
@@ -731,7 +895,9 @@ int main(int argc, char *argv[])
         //    fprintf (stderr, "forked %d\n", getpid());
     }
 
-    log_file = log_init(opt.logfile, 1);
+    /* only create a log file if we have a logfile set; note that --enable-debug sets a default above */
+    if (NULL != opt.logfile)
+        log_file = log_init(opt.logfile, 1);
 
     fuse_main(args.argc, args.argv, &mysqlfs_oper);
     fuse_opt_free_args(&args);

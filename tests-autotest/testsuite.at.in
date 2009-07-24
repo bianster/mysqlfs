@@ -8,7 +8,7 @@ AT_CLEANUP()
 AT_SETUP(DB Check)
 
 dnl -- didja actually install the DB?  Note that the results I got on MacOSX and linux differed (diff MySQL versions?) so I sed'd the output
-AT_CHECK([echo "show triggers where event='DELETE'"| @MYSQL@ --skip-column-names -u mysqlfs --password=password mysqlfs|sed -e 's/@localhost.*$/@localhost/g'],0,
+AT_CHECK([echo "show triggers where event='DELETE'"| sudo @MYSQL@ --skip-column-names -u root mysqlfs|sed -e 's/@localhost.*$/@localhost/g'],0,
 [drop_data	DELETE	inodes	BEGIN DELETE FROM data_blocks WHERE inode=OLD.inode; END	AFTER	NULL		root@localhost
 ])
 AT_CHECK([echo "delete from inodes"       | @MYSQL@ --skip-column-names -u mysqlfs --password=password mysqlfs],0,[ignore],[ignore])
@@ -20,26 +20,26 @@ AT_CLEANUP()
 AT_SETUP(Basic Mount)
 AT_CHECK([@abs_top_builddir@/mysqlfs -odebug-dnq], 2,[],[DEBUG: Dump and Quit
 
-connect: mysql://(null):(null)@(null):0/(null)
+connect: mysql://(null):(null)@(null):3306/(null)
 connect: sock://(null)
 fsck? no
 group: mysqlfs
 pool: 1 initial connections
 pool: 5 idling connections
-logfile: file://mysqlfs.log
+logfile: file://@def_logfile@
 bg? no (debug)
 
 ])
 
 AT_CHECK([@abs_top_builddir@/mysqlfs -obackground -ohost=localhost -ouser=mysqlfs -opassword=password -odatabase=mysqlfs -odebug-dnq], 2,[],[DEBUG: Dump and Quit
 
-connect: mysql://mysqlfs:password@localhost:0/mysqlfs
+connect: mysql://mysqlfs:password@localhost:3306/mysqlfs
 connect: sock://(null)
 fsck? no
 group: mysqlfs
 pool: 1 initial connections
 pool: 5 idling connections
-logfile: file://mysqlfs.log
+logfile: file://@def_logfile@
 bg? yes (debug)
 
 ])
@@ -52,7 +52,7 @@ fsck? no
 group: mysqlfs
 pool: 1 initial connections
 pool: 5 idling connections
-logfile: file://mysqlfs.log
+logfile: file://@def_logfile@
 bg? yes (debug)
 
 ])
@@ -65,7 +65,7 @@ fsck? no
 group: mysqlfs
 pool: 1 initial connections
 pool: 5 idling connections
-logfile: file://mysqlfs.log
+logfile: file://@def_logfile@
 bg? yes (debug)
 
 ])
@@ -91,25 +91,47 @@ fsck? yes
 group: mysqlfs
 pool: 1 initial connections
 pool: 5 idling connections
-logfile: file://mysqlfs.log
+logfile: file://@def_logfile@
 bg? no (debug)
 
 ])
 
 dnl -- AT_CHECK([false],0,[ignore],[ignore])
 
+dnl prep a mountpoint
 AT_CHECK([mkdir -p fs],0,[ignore],[ignore])
+
 AT_CHECK([@abs_top_builddir@/@at_testdir@/timeout -t 10 -- @abs_top_builddir@/mysqlfs -obackground -ohost=localhost -ouser=mysqlfs -opassword=password -odatabase=mysqlfs ./fs])
  
-AT_CHECK([find fs],0,[fs
-],[ignore])
+dnl there seems to be a bit of unpredictability -- without a 1-sec wait, the follow test show no mounted filesys 1 time in 6
+AT_CHECK([sleep 1],0,[ignore],[ignore])
+
 AT_CHECK([cp @with_testfile@ fs/ || cp @abs_top_builddir@/@with_testfile@ fs/],0,[ignore],[ignore])
-AT_CHECK([find fs],0,[fs
-fs/@with_testfile@
-],[ignore])
 
 AT_CHECK([cat fs/@with_testfile@|@MD5SUM@],0,[@testfile_md5sum@
 ],[ignore])
+ 
+AT_CHECK([killall mysqlfs],[ignore],[ignore])
+AT_CLEANUP()
+
+AT_SETUP(Status Subdir)
+AT_XFAIL_IF([case x@STATUSDIR@ in xno) true;; *) false;; esac])
+
+dnl prep a mountpoint
+AT_CHECK([mkdir -p fs],0,[ignore],[ignore])
+
+AT_CHECK([@abs_top_builddir@/@at_testdir@/timeout -t 10 -- @abs_top_builddir@/mysqlfs -obackground -ohost=localhost -ouser=mysqlfs -opassword=password -odatabase=mysqlfs ./fs])
+
+dnl there seems to be a bit of unpredictability -- without a 1-sec wait, the follow test show no mounted filesys 1 time in 6
+AT_CHECK([sleep 1],0,[ignore],[ignore])
+
+AT_CHECK([find fs],0,[fs
+fs/@STATUSDIR@
+fs/@STATUSDIR@/txt
+fs/@STATUSDIR@/xml
+fs/@with_testfile@
+],[ignore])
+AT_CHECK([cat fs/.status/xml],0,[ignore],[ignore])
  
 AT_CHECK([killall mysqlfs],[ignore],[ignore])
 AT_CLEANUP()

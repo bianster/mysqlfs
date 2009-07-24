@@ -23,8 +23,11 @@ FILE *log_file;
 //int log_types_mask = LOG_ERROR | LOG_INFO | LOG_DEBUG;
 int log_types_mask = LOG_ERROR | LOG_INFO;
 //int log_debug_mask = LOG_D_CALL | LOG_D_SQL | LOG_D_OTHER;
-//int log_debug_mask = LOG_D_CALL;
+#ifdef DEBUG
+int log_debug_mask = LOG_D_CALL;
+#else
 int log_debug_mask = 0;
+#endif
 
 #define BUFSIZE 512
 
@@ -45,8 +48,8 @@ int log_printf(enum log_types type, const char *logmsg, ...)
 	va_list args;
 	char buf[BUFSIZE];
 
-	if ((log_types_mask & type & LOG_MASK_MAJOR) == 0)
-	  return 0;
+	//if ((log_types_mask & type & LOG_MASK_MAJOR) == 0)
+	//  return 0;
 
 	if ((type & LOG_DEBUG) && (log_debug_mask & type & LOG_MASK_MINOR) == 0)
 	  return 0;

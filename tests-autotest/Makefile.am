@@ -7,11 +7,16 @@ check-local: atconfig atlocal $(TESTSUITE) timeout
 
 check_PROGRAMS = timeout
 timeout_SOURCES = timeout.c
+if DO_DEBUG
+def_logfile = mysqlfs.log
+else
+def_logfile = (null)
+endif
 
 AUTOTEST = $(AUTOM4TE) --language=autotest
 testsuite $(TESTSUITE): testsuite.at $(srcdir)/package.m4
 	@echo Making $@...
-	$(AUTOTEST) -I $(srcdir)/$(srcdir) $< | sed -e 's/@at_testdir@/$(subdir)/g' > $@.tmp && mv $@.tmp $@
+	$(AUTOTEST) -I $(srcdir)/$(srcdir) $< | sed -e 's/@def_logfile@/$(def_logfile)/g' -e 's/@at_testdir@/$(subdir)/g' > $@.tmp && mv $@.tmp $@
 
 atconfig: $(top_builddir)/config.status
 	cd $(top_builddir) && \
