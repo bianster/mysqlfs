@@ -12,7 +12,7 @@
 /** maximum length of a full pathname */
 #define PATH_MAX 1024
 
-/** size of a single datablock written to the database; should be less than the size of a "blob" or mysqlfs.sql needs to be altered */
+/** size of a single datablock written to the database; should be less than the size of a "blob" or mysqlfs.sql needs to be altered (pkg/statusfile.xsd limits to unsigned int; schema.sql uses BLOB which limits this at 2^16-1 */
 #define DATA_BLOCK_SIZE	4096
 
 /** basic preprocessor-phase maximum macro */

@@ -69,6 +69,11 @@ AC_CHECK_PROG(HAVE_DOT,[dot],YES,NO)
 AC_CHECK_PROGS(MD5SUM, [md5 md5sum], missing)
 AC_CHECK_PROGS(MYSQL, [mysql /usr/local/bin/mysql /usr/local/mysql/bin/mysql], missing)
 
+dnl this ia a bit psychotic, but I'm a fan of XML for the ability to check it.  so let's check it.
+AC_CHECK_PROGS(XMLLINT, [xmllint], missing)
+XMLVERSION="1.0"	dnl Schema version
+AC_SUBST(XMLVERSION)
+
 testfile_md5sum=`cat $with_testfile|${MD5SUM}`
 AC_SUBST(with_testfile)
 AC_SUBST(testfile_md5sum)

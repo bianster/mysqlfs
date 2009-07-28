@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema
+ xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+ targetNamespace="http://mysqlfs.sf.net/xsd/1.0/statusfile.xsd"
+ xmlns="http://mysqlfs.sf.net/xsd/1.0/statusfile.xsd">
+<xsd:annotation>
+  <xsd:documentation>
+    XML Schema for Status Files -- for completeness, to describe the values permitted in .status/xml (note: .status may be redefined at buildtime)
+    Last Modifed $Date$, rev $Revision$
+  </xsd:documentation>
+</xsd:annotation>
+
+<xsd:element name="mysqlfs">
+  <xsd:annotation>
+    <xsd:documentation>
+      document root, contains all the others
+    </xsd:documentation>
+  </xsd:annotation>
+ <xsd:complexType>
+   <xsd:all>
+     <xsd:element ref="host" minOccurs="0" maxOccurs="1"/>
+     <xsd:element ref="user" minOccurs="0" maxOccurs="1"/>
+     <xsd:element ref="db" minOccurs="0" maxOccurs="1"/>
+     <xsd:element ref="port" minOccurs="0" maxOccurs="1"/>
+     <xsd:element ref="uri" minOccurs="0" maxOccurs="1"/>
+     <xsd:element ref="fsck" minOccurs="0" maxOccurs="1"/>
+     <xsd:element ref="log" minOccurs="0" maxOccurs="1"/>
+     <xsd:element ref="blocksize" minOccurs="0" maxOccurs="1"/>
+     <xsd:element ref="connections" minOccurs="0" maxOccurs="1"/>
+     <xsd:element ref="plugin" minOccurs="0"/>
+   </xsd:all>
+ </xsd:complexType>
+</xsd:element>
+
+<xsd:element name="host">
+  <xsd:annotation>
+    <xsd:documentation>
+      Hostname to which the mysqlfs should connect; also represented in the url element.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:simpleType>
+    <xsd:restriction base="xsd:string">
+      <xsd:minLength value="3"/>  <!-- need to check that this hostname limitation matches both DNS requirements and MySQL schema -->
+      <xsd:maxLength value="80"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+</xsd:element> 
+
+<xsd:element name="user">
+  <xsd:annotation>
+    <xsd:documentation>
+      Username that the mysqlfs can use to connect to the database; also represented in the url element.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:simpleType>
+    <xsd:restriction base="xsd:string">
+      <xsd:minLength value="3"/>  <!-- need to check that these values match the schema of the authentication -->
+      <xsd:maxLength value="80"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+</xsd:element> 
+
+<xsd:element name="db">
+  <xsd:annotation>
+    <xsd:documentation>
+      Database on the MySQL server to which the mysqlfs should connect; also represented in the url element.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:simpleType>
+    <xsd:restriction base="xsd:string">
+      <xsd:minLength value="3"/>  <!-- need to check that these values match the schema of the authentication -->
+      <xsd:maxLength value="80"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+</xsd:element> 
+
+<xsd:element name="port">
+  <xsd:annotation>
+    <xsd:documentation>
+      Port number on the MySQL server to which the mysqlfs should connect; also represented in the url element.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:simpleType>  <!-- need to see if I can replace simpleType with the unsignedInt -->
+    <xsd:restriction base="xsd:unsignedInt"/>
+  </xsd:simpleType>
+</xsd:element> 
+
+<xsd:element name="uri">
+  <xsd:annotation>
+    <xsd:documentation>
+      A URI representation of the connection data.
+      The URI will conform to RFC 2396 (http://www.ietf.org/rfc/rfc2396.txt).
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:simpleType>
+    <xsd:restriction base="xsd:anyURI">
+      <xsd:minLength value="12"/>
+      <xsd:maxLength value="2048"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+</xsd:element> 
+
+<xsd:element name="fsck">
+  <xsd:annotation>
+    <xsd:documentation>
+      Does this filesystem FSCK on mount?
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:simpleType>
+    <xsd:restriction base="xsd:boolean"/>
+  </xsd:simpleType>
+</xsd:element> 
+
+<xsd:element name="log">
+  <xsd:annotation>
+    <xsd:documentation>
+      If the filesystem is logging actions, this is the destination filename.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:simpleType>
+    <xsd:restriction base="xsd:string">
+      <xsd:minLength value="3"/>  <!-- arbitrary -->
+      <xsd:maxLength value="80"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+</xsd:element> 
+
+<xsd:element name="blocksize">
+  <xsd:annotation>
+    <xsd:documentation>
+      How large each block of data shall be; limited to 2^16-1 due to BLOB datatype; currently defined at compile-time
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:simpleType>  <!-- need to see if I can replace simpleType with the unsignedInt -->
+    <xsd:restriction base="xsd:unsignedInt">
+      <xsd:minInclusive value="1"/>  <!-- OK, it's possible, but ... huh? -->
+      <xsd:maxInclusive value="65535"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+</xsd:element> 
+
+<xsd:element name="connections">
+  <xsd:annotation>
+    <xsd:documentation>
+      Config information and status regarding the connection-pool
+    </xsd:documentation>
+  </xsd:annotation>
+ <xsd:complexType>
+   <xsd:all>
+     <xsd:element ref="init"/>
+     <xsd:element ref="pool"/>
+     <xsd:element ref="idle"/>
+     <xsd:element ref="unused"/>
+   </xsd:all>
+ </xsd:complexType>
+</xsd:element>
+
+<xsd:element name="init">
+  <xsd:annotation>
+    <xsd:documentation>
+      Configured value: the number of connections to create initially
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:simpleType>  <!-- need to see if I can replace simpleType with the unsignedInt -->
+    <xsd:restriction base="xsd:unsignedInt"/>
+  </xsd:simpleType>
+</xsd:element> 
+
+<xsd:element name="pool">
+  <xsd:annotation>
+    <xsd:documentation>
+      Dynamic value: the current number of connections in the pool
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:simpleType>  <!-- need to see if I can replace simpleType with the unsignedInt -->
+    <xsd:restriction base="xsd:unsignedInt"/>
+  </xsd:simpleType>
+</xsd:element> 
+
+<xsd:element name="idle">
+  <xsd:annotation>
+    <xsd:documentation>
+      Configured value: the max number of idle connections to allow
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:simpleType>  <!-- need to see if I can replace simpleType with the unsignedInt -->
+    <xsd:restriction base="xsd:unsignedInt"/>
+  </xsd:simpleType>
+</xsd:element> 
+
+<xsd:element name="unused">
+  <xsd:annotation>
+    <xsd:documentation>
+      Dynamic value: the current number of unused (ie idle) connections
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:simpleType>  <!-- need to see if I can replace simpleType with the unsignedInt -->
+    <xsd:restriction base="xsd:unsignedInt"/>
+  </xsd:simpleType>
+</xsd:element> 
+
+<xsd:element name="plugin">
+  <xsd:annotation>
+    <xsd:documentation>
+      Container for a single plugin's information
+    </xsd:documentation>
+  </xsd:annotation>
+ <xsd:complexType>
+   <xsd:sequence>
+     <xsd:element ref="name"/>
+     <xsd:element ref="info"/>
+   </xsd:sequence>
+ </xsd:complexType>
+</xsd:element>
+
+<xsd:element name="name">
+  <xsd:annotation>
+    <xsd:documentation>
+      Name of the plugin, as it self-identifies using the ::identity() function of the plugin interface
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:simpleType>   <!-- need to see if I can just replace this with the simple typedef -->
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+</xsd:element> 
+
+<xsd:element name="info">
+  <xsd:annotation>
+    <xsd:documentation>
+      A line of text from the plugin as it defines its status; currently just free-form (but url-escaped)
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:simpleType>   <!-- need to see if I can just replace this with the simple typedef -->
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+</xsd:element> 
+
+</xsd:schema>

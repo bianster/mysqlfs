@@ -1,8 +1,14 @@
 AT_INIT()
 
 AT_SETUP(Baseline Checksum)
+AT_KEYWORDS(simple)
 AT_CHECK([(cat @with_testfile@||cat @abs_top_builddir@/@with_testfile@) |@MD5SUM@],0,[@testfile_md5sum@
 ],[ignore])
+AT_CLEANUP()
+
+AT_SETUP(XML Stuff -- XML lets itself be verified)
+AT_KEYWORDS(simple)
+AT_CHECK([@XMLLINT@ @abs_top_builddir@/pkg/statusfile.xsd --noout],0,[ignore],[ignore])
 AT_CLEANUP()
 
 AT_SETUP(DB Check)
@@ -114,6 +120,7 @@ AT_CHECK([cat fs/@with_testfile@|@MD5SUM@],0,[@testfile_md5sum@
 AT_CHECK([killall mysqlfs],[ignore],[ignore])
 AT_CLEANUP()
 
+
 AT_SETUP(Status Subdir)
 AT_XFAIL_IF([case x@STATUSDIR@ in xno) true;; *) false;; esac])
 
@@ -131,7 +138,7 @@ fs/@STATUSDIR@/txt
 fs/@STATUSDIR@/xml
 fs/@with_testfile@
 ],[ignore])
-AT_CHECK([cat fs/.status/xml],0,[ignore],[ignore])
+AT_CHECK([@XMLLINT@ --schema @abs_top_builddir@/pkg/statusfile.xsd --noout fs/@STATUSDIR@/xml],0,[ignore],[ignore])
  
 AT_CHECK([killall mysqlfs],[ignore],[ignore])
 AT_CLEANUP()
