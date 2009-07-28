@@ -61,6 +61,8 @@ AC_CHECK_PROGS(DOXYGEN, [doxygen], missing)
 AM_CONDITIONAL(DO_DOXYGEN, test x$DOXYGEN != xmissing)
 AC_CHECK_PROGS(RPMBUILD, [rpmbuild], missing)
 AM_CONDITIONAL(DO_RPMBUILD, test x$RPMBUILD != xmissing)
+AC_CHECK_PROGS(DOT, [dot], missing)
+AM_CONDITIONAL(DO_DOT, test x$DOT != xmissing)
 AM_CONDITIONAL(DO_DEBUG, test x$debug != xno)
 AC_CHECK_PROG(HAVE_DOXYGEN,[doxygen],yes)
 AC_CHECK_PROG(HAVE_DOT,[dot],YES,NO)
@@ -74,7 +76,8 @@ AC_SUBST(testfile_md5sum)
 dnl Because I keep forgetting that we need to treat MacOSX like BSD
 case $ac_cv_build in
 *-apple-darwin*)
-	CFLAGS_ADD="$CFLAGS_ADD -D __FreeBSD__=10" ;;
+	CFLAGS_ADD="$CFLAGS_ADD -D __FreeBSD__=10" ;
+	CPPFLAGS_ADD="$CPPFLAGS_ADD -D __FreeBSD__=10" ;;
 esac
 
 AC_SUBST(AUTOM4TE, autom4te)
@@ -122,7 +125,7 @@ else
 fi
 LDFLAGS="$LDFLAGS $MYSQL_LDFLAGS"
 CFLAGS="$CFLAGS $CFLAGS_ADD $MYSQL_CFLAGS"
-CPPFLAGS="$CPPFLAGS $MYSQL_CFLAGS"
+CPPFLAGS="$CPPFLAGS $CPPFLAGS_ADD $MYSQL_CFLAGS"
 
 dnl Checks for libraries.
 AC_SEARCH_LIBS(mysql_init, mysqlclient,, AC_MSG_ERROR([Please install mysqlclient library first.]))
@@ -164,7 +167,7 @@ CFLAGS="$CFLAGS $CFLAGS_ADD"
 
 AC_OUTPUT(Makefile
 	mysqlfs.spec:pkg/mysqlfs.spec.in Doxyfile:pkg/Doxyfile.in
-	pkg/doc-mainpage.c
+	pkg/Makefile pkg/doc-mainpage.c pkg/statusfile.xsd
 	plugins/Makefile
 	tests-autotest/Makefile tests-autotest/atlocal tests-autotest/testsuite.at
 )

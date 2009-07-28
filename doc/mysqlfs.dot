@@ -1,0 +1,10 @@
+digraph mysqlfs {
+  node [ fontsize=25, labelfontsize=50 ];
+
+  File -> FUSE -> MySQLfs -> FUSE -> File;
+  File [ color=invis, image="page.png" ];
+  FUSE [ color=invis, image="folder.png" ];
+  MySQLfs  [ color=invis, image="processes.png" ];
+  MySQL  [ color=invis, image="database.png" ];
+  MySQL -> MySQLfs -> MySQL;
+}

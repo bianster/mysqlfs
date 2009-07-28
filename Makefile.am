@@ -21,7 +21,8 @@ mysqlfs_SOURCES = mysqlfs.c query.c pool.c log.c
 noinst_HEADERS = mysqlfs.h query.h pool.h log.h
 
 if DO_DOXYGEN
-doc: Doxyfile pkg/doc-mainpage.c
+doc: Doxyfile pkg/doc-mainpage.c doc/*
+	make -C doc doc
 	$(DOXYGEN)
 
 doc-website: doc
