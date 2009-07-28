@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.4 2006/10/02 22:34:03 ludvigm Exp $
+# $Id$
 
 bin_PROGRAMS = mysqlfs
 schema_DATA = schema.sql install.sql
@@ -9,7 +9,12 @@ check-recursive : mysqlfs
 
 EXTRA_DIST = $(schema_DATA) mysqlfs.spec
 
-SUBDIRS = tests-autotest
+DIST_SUBDIRS = plugins tests-autotest
+SUBDIRS =
+if DO_PLUGINS
+SUBDIRS += plugins
+endif
+SUBDIRS += tests-autotest
 
 mysqlfs_SOURCES = mysqlfs.c query.c pool.c log.c
 

@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Michal Ludvig <michal@logix.cz>
-  $Id: log.c,v 1.5 2006/09/13 10:54:37 ludvigm Exp $
+  $Id$
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.

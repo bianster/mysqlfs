@@ -1,5 +1,5 @@
 dnl Process this file with autoconf to produce a configure script.
-dnl $Id: configure.in,v 1.10 2007/03/28 22:47:10 ludvigm Exp $
+dnl $Id$
 
 dnl stepped this to a strictly numeric version -- the "-rc1-pre7.14a" stuff seems ambiguous and doesn't pass strcmp("..","..").  This will unify at 0.4.0
 AC_INIT(mysqlfs, 0.4.0)
@@ -9,7 +9,7 @@ AC_CONFIG_SRCDIR([configure.in])
 AC_CONFIG_TESTDIR([tests-autotest])
 AC_PREFIX_PROGRAM([id])
 
-AC_ENABLE_SHARED(no)
+AC_ENABLE_SHARED(yes)
 
 AC_DEFINE(FUSE_USE_VERSION, 25, [Fuse API Version])
 AC_DEFINE(MYSQL_MIN_VERSION, 50000, [Minimal supported MySQL version])
@@ -33,6 +33,19 @@ AC_SUBST(STATUSDIR)
   ;;
 esac
 ], STATUSDIR=no)
+AC_ARG_ENABLE(plugins,
+[AS_HELP_STRING([--disable-plugins],[Disable block and pre/post plugins; default=enabled])],
+[
+    if test "x$enableval" != "xyes"; then
+        PLUGINS=false
+    else
+        PLUGINS=true
+    fi
+],
+[
+    PLUGINS=true
+])
+AC_SUBST([PLUGINS])
 
 dnl Note: this is a GCC extension, this kills portability
 case "$debug" in
@@ -144,5 +157,14 @@ yes
 #endif], [AC_MSG_RESULT(ok)], [AC_MSG_RESULT(too old)
         AC_MSG_ERROR([MySQL version 5.0 or higher is required.])
 ])
+AC_SEARCH_LIBS(dlopen)
+AM_CONDITIONAL(DO_PLUGINS, test x$PLUGINS != xfalse)
+AC_SEARCH_LIBS(dlopen_preflight)
+CFLAGS="$CFLAGS $CFLAGS_ADD"
 
-AC_OUTPUT(Makefile tests-autotest/Makefile tests-autotest/atlocal tests-autotest/testsuite.at mysqlfs.spec:pkg/mysqlfs.spec.in Doxyfile:pkg/Doxyfile.in pkg/doc-mainpage.c)
+AC_OUTPUT(Makefile
+	mysqlfs.spec:pkg/mysqlfs.spec.in Doxyfile:pkg/Doxyfile.in
+	pkg/doc-mainpage.c
+	plugins/Makefile
+	tests-autotest/Makefile tests-autotest/atlocal tests-autotest/testsuite.at
+)

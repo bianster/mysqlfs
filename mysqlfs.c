@@ -1,7 +1,7 @@
 /*
   mysqlfs - MySQL Filesystem
   Copyright (C) 2006 Tsukasa Hamano <code@cuspy.org>
-  $Id: mysqlfs.c,v 1.18 2006/09/17 11:09:32 ludvigm Exp $
+  $Id$
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -479,18 +479,18 @@ static int snprint_status(char *dest, size_t size, struct mysqlfs_opt *opt, long
     {
         case inode_status_txt: /* produce text/plain format */
             return snprintf (dest, size, "host: %s\nuser: %s\ndb:   %s\nport: %d\nuri:  "
-                "mysql://%s@%s:%d/%s\nfsck: %slog:  %s\nconnections init: %d\nconnections idle: %d\n"
+                "mysql://%s@%s:%d/%s\nfsck: %slog:  %s\nblocksize:  %u\nconnections init: %d\nconnections idle: %d\n"
                 "connections pool: %d\nconnections unused: %d\n",
                 opt->host, opt->user, opt->db, (opt->port ? opt->port : MYSQL_PORT), opt->user, opt->host, (opt->port ? opt->port : MYSQL_PORT), opt->db,
-                (opt->fsck ? "yes" : "no"), opt->logfile, opt->init_conns, opt->max_idling_conns, lifo_pool_cnt, lifo_unused_cnt);
+                (opt->fsck ? "yes" : "no"), opt->logfile, DATA_BLOCK_SIZE, opt->init_conns, opt->max_idling_conns, lifo_pool_cnt, lifo_unused_cnt);
 
         case inode_status_xml: /* produce text/xml format */
             return snprintf (dest, size, "<?xml version=\"1.0\"?>\n<mysqlfs>\n  <host>%s</host>\n  <user>%s</user>\n  <db>%s</db>\n  <port>%d</port>\n"
-                "  <uri>mysql://%s@%s:%d/%s</uri>\n  <fsck>%s</fsck>\n  <log>%s</log>\n"
+                "  <uri>mysql://%s@%s:%d/%s</uri>\n  <fsck>%s</fsck>\n  <log>%s</log>\n  <blocksize>%u</blocksize>\n"
                 "  <connections>\n    <init>%d</init>\n    <idle>%d</idle>\n"
                 "    <pool>%d</pool>\n    <unused>%d</unused>\n  </connections>\n</mysqlfs>\n",
                 opt->host, opt->user, opt->db, (opt->port ? opt->port : MYSQL_PORT), opt->user, opt->host, (opt->port ? opt->port : MYSQL_PORT), opt->db,
-                (opt->fsck ? "yes" : "no"), opt->logfile, opt->init_conns, opt->max_idling_conns, lifo_pool_cnt, lifo_unused_cnt);
+                (opt->fsck ? "yes" : "no"), opt->logfile, DATA_BLOCK_SIZE, opt->init_conns, opt->max_idling_conns, lifo_pool_cnt, lifo_unused_cnt);
     }
 
     return -1;
