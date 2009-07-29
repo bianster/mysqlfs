@@ -26,6 +26,7 @@
      <xsd:element ref="fsck" minOccurs="0" maxOccurs="1"/>
      <xsd:element ref="log" minOccurs="0" maxOccurs="1"/>
      <xsd:element ref="blocksize" minOccurs="0" maxOccurs="1"/>
+     <xsd:element ref="osxnospotlight" minOccurs="0" maxOccurs="1"/>
      <xsd:element ref="connections" minOccurs="0" maxOccurs="1"/>
      <xsd:element ref="plugin" minOccurs="0"/>
    </xsd:all>
@@ -136,6 +137,17 @@
       <xsd:minInclusive value="1"/>  <!-- OK, it's possible, but ... huh? -->
       <xsd:maxInclusive value="65535"/>
     </xsd:restriction>
+  </xsd:simpleType>
+</xsd:element> 
+
+<xsd:element name="osxnospotlight">
+  <xsd:annotation>
+    <xsd:documentation>
+      Do we block MacOSX from running spotlight/index tasks against this filesystem with a .meta_never_index tag file?
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:simpleType>
+    <xsd:restriction base="xsd:boolean"/>
   </xsd:simpleType>
 </xsd:element> 
 

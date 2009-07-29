@@ -49,10 +49,15 @@ static int len_status_pathname = 8;
 #define inode_status_xml -3
 #define inode_status_txt -4
 static int snprint_status(char *, size_t, struct mysqlfs_opt *, long);
-
-/* it's a bit of a kludge to set a pointer to a structure in the mainfunc, but it was breaking (<blush>), need to clean this up later */
-struct mysqlfs_opt *theopts;
 #endif
+
+/**
+ * copy to the options setting, global variable.  Used for both STATUSDIR (if configured) and osxnospotlight
+ *
+ * it's a bit of a kludge to set a pointer to a structure in the mainfunc, but it was breaking (<blush>),
+ * need to clean this up later
+ */
+struct mysqlfs_opt *theopts;
 
 static int mysqlfs_getattr(const char *path, struct stat *stbuf)
 {
@@ -91,7 +96,17 @@ static int mysqlfs_getattr(const char *path, struct stat *stbuf)
     }
 #endif
 
+    /* fixme: move memset() above STATUSDIR ? */
     memset(stbuf, 0, sizeof(struct stat));
+
+    if ( (0 < theopts->osxnospotlight) && (0 == strcmp (path, "/.metadata_never_index")))
+    {
+        stbuf->st_mode = S_IRUSR|S_IRGRP|S_IROTH|S_IFREG;	/* file w/ mode 0444 */
+        stbuf->st_nlink = 1;
+        stbuf->st_size = sizeof(PACKAGE_STRING);	/* I need some bogus content for a read() operation */
+
+        return 0;
+    }
 
     if ((dbconn = pool_get()) == NULL)
       return -EMFILE;
@@ -479,18 +494,18 @@ static int snprint_status(char *dest, size_t size, struct mysqlfs_opt *opt, long
     {
         case inode_status_txt: /* produce text/plain format */
             return snprintf (dest, size, "host: %s\nuser: %s\ndb:   %s\nport: %d\nuri:  "
-                "mysql://%s@%s:%d/%s\nfsck: %slog:  %s\nblocksize:  %u\nconnections init: %d\nconnections idle: %d\n"
+                "mysql://%s@%s:%d/%s\nfsck: %slog:  %s\nblocksize:  %u\nosxnospotlight: %s\nconnections init: %d\nconnections idle: %d\n"
                 "connections pool: %d\nconnections unused: %d\n",
                 opt->host, opt->user, opt->db, (opt->port ? opt->port : MYSQL_PORT), opt->user, opt->host, (opt->port ? opt->port : MYSQL_PORT), opt->db,
-                (opt->fsck ? "true" : "false"), opt->logfile, DATA_BLOCK_SIZE, opt->init_conns, opt->max_idling_conns, lifo_pool_cnt, lifo_unused_cnt);
+                (opt->fsck ? "true" : "false"), opt->logfile, DATA_BLOCK_SIZE, (opt->osxnospotlight ? "true (block)" : "false (allow)"), opt->init_conns, opt->max_idling_conns, lifo_pool_cnt, lifo_unused_cnt);
 
         case inode_status_xml: /* produce text/xml format */
             return snprintf (dest, size, "<?xml version=\"1.0\"?>\n<mysqlfs xmlns=\"http://mysqlfs.sf.net/xsd/%s/statusfile.xsd\">\n  <host>%s</host>\n  <user>%s</user>\n  <db>%s</db>\n  <port>%d</port>\n"
-                "  <uri>mysql://%s@%s:%d/%s</uri>\n  <fsck>%s</fsck>\n  <log>%s</log>\n  <blocksize>%u</blocksize>\n"
+                "  <uri>mysql://%s@%s:%d/%s</uri>\n  <fsck>%s</fsck>\n  <log>%s</log>\n  <blocksize>%u</blocksize>\n  <osxnospotlight>%s</osxnospotlight>\n"
                 "  <connections>\n    <init>%d</init>\n    <idle>%d</idle>\n"
                 "    <pool>%d</pool>\n    <unused>%d</unused>\n  </connections>\n</mysqlfs>\n",
                 XMLVERSION, opt->host, opt->user, opt->db, (opt->port ? opt->port : MYSQL_PORT), opt->user, opt->host, (opt->port ? opt->port : MYSQL_PORT), opt->db,
-                (opt->fsck ? "true" : "false"), opt->logfile, DATA_BLOCK_SIZE, opt->init_conns, opt->max_idling_conns, lifo_pool_cnt, lifo_unused_cnt);
+                (opt->fsck ? "true" : "false"), opt->logfile, DATA_BLOCK_SIZE, (opt->osxnospotlight ? "true" : "false"), opt->init_conns, opt->max_idling_conns, lifo_pool_cnt, lifo_unused_cnt);
     }
 
     return -1;
@@ -531,6 +546,14 @@ static int mysqlfs_read(const char *path, char *buf, size_t size, off_t offset,
         return mysqlfs_status_read(a, buf, size, offset, fi);
     }
 #endif
+    /* see http://www.macosxhints.com/article.php?story=20060814124808745 */
+    if ( (0 < theopts->osxnospotlight) && (0 == strcmp (path, "/.metadata_never_index")))
+    {
+        char *a = PACKAGE_STRING;				/* in case I cannot point directly to static content */
+        int l = MIN(strlen(PACKAGE_STRING)-offset,size);	/* tossaway length calc */
+        strncpy (buf, a+offset, l);
+        return l;
+    }
 
     if ((dbconn = pool_get()) == NULL)
       return -EMFILE;
@@ -755,6 +778,9 @@ void usage(){
             "       mysqlfs --host=host --user=user --password=password --database=database ./mountpoint\n");
     fprintf(stderr,
             "       mysqlfs -h host -u user --password=password -D database ./mountpoint\n");
+    fprintf(stderr, "\n(stop spotlight (specific host one-offs))\n");
+    fprintf(stderr,
+            "       mysqlfs --osxnospotlight --host=host --user=user --password=password --database=database ./mountpoint\n");
 }
 
 /** macro to set a call value with a default -- defined yet? */
@@ -787,6 +813,9 @@ static struct fuse_opt mysqlfs_opts[] =
     MYSQLFS_OPT_KEY("--logfile=%s",	logfile,	0),
     MYSQLFS_OPT_KEY(  "mycnf_group=%s",	mycnf_group,	0), /* Read defaults from specified group in my.cnf  -- Command line options still have precedence.  */
     MYSQLFS_OPT_KEY("--mycnf_group=%s",	mycnf_group,	0),
+    MYSQLFS_OPT_KEY(  "osxspotlight",	osxnospotlight,	0),
+    MYSQLFS_OPT_KEY("noosxspotlight",	osxnospotlight,	1),
+    MYSQLFS_OPT_KEY("osxnospotlight",	osxnospotlight,	1),
     MYSQLFS_OPT_KEY(  "password=%s",	passwd,	0),
     MYSQLFS_OPT_KEY("--password=%s",	passwd,	0),
     MYSQLFS_OPT_KEY(  "port=%d",	port,	0),
@@ -870,9 +899,9 @@ int main(int argc, char *argv[])
     };
 
     log_file = stderr;
-#ifdef STATUSDIR
+
+    /** theopts kludge is used for both statusdir (if configured at build) and for osxnospotlight */
     theopts = &opt;
-#endif
 
     fuse_opt_parse(&args, &opt, mysqlfs_opts, mysqlfs_opt_proc);
 

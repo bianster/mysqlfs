@@ -20,7 +20,8 @@ struct mysqlfs_opt {
     char *db;                   /**< MySQL database name */
     unsigned int port;		/**< MySQL port */
     char *socket;		/**< MySQL socket */
-    unsigned int fsck;		/**< fsck boolean 1 => do fsck, 0 => don't.  Used in pool_check_mysql_setup() to call query_fsck()  */
+    unsigned char fsck;		/**< fsck boolean 1 => do fsck, 0 => don't.  Used in pool_check_mysql_setup() to call query_fsck()  */
+    unsigned char osxnospotlight;	/**< block spotlight, boolean: 0 => do nothing, 1 => block spotlight with a /.metadata_never_index phoney-file */
     char *mycnf_group;		/**< Group in my.cnf to read defaults from */
     unsigned int init_conns;	/**< Number of DB connections to init on startup */
     unsigned int max_idling_conns;	/**< Maximum number of idling DB connections */
