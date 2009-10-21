@@ -57,17 +57,17 @@ esac
 dnl Checks for programs.
 AC_PROG_CC
 AC_PROG_LIBTOOL
-AC_CHECK_PROGS(DOXYGEN, [doxygen], missing)
+AC_PATH_PROGS(DOXYGEN, [doxygen], missing, $PATH:/Applications/Doxygen.app/Contents/Resources)
 AM_CONDITIONAL(DO_DOXYGEN, test x$DOXYGEN != xmissing)
 AC_CHECK_PROGS(RPMBUILD, [rpmbuild], missing)
 AM_CONDITIONAL(DO_RPMBUILD, test x$RPMBUILD != xmissing)
-AC_CHECK_PROGS(DOT, [dot], missing)
+AC_PATH_PROGS(DOT, [dot], missing, $PATH:/usr/local/bin)
 AM_CONDITIONAL(DO_DOT, test x$DOT != xmissing)
 AM_CONDITIONAL(DO_DEBUG, test x$debug != xno)
 AC_CHECK_PROG(HAVE_DOXYGEN,[doxygen],yes)
 AC_CHECK_PROG(HAVE_DOT,[dot],YES,NO)
 AC_CHECK_PROGS(MD5SUM, [md5 md5sum], missing)
-AC_CHECK_PROGS(MYSQL, [mysql /usr/local/bin/mysql /usr/local/mysql/bin/mysql], missing)
+AC_PATH_PROGS(MYSQL, [mysql], missing, $PATH:/usr/local/bin:/usr/local/mysql/bin)
 
 dnl this ia a bit psychotic, but I'm a fan of XML for the ability to check it.  so let's check it.
 AC_CHECK_PROGS(XMLLINT, [xmllint], missing)
