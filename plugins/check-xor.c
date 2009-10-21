@@ -11,7 +11,7 @@
 
 /**
  * Test program to check that the dummy plugin loads and has the symbols I'm looking for; based on
- * copying the example in dlopen() man page, then iteratively adding more and more bits to it..
+ * copying the example in dlopen() man page then adding more and more iteratively
  */
 int main(int argc, char **argv)
 {

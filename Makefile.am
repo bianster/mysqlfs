@@ -9,7 +9,7 @@ check-recursive : mysqlfs
 
 EXTRA_DIST = $(schema_DATA) mysqlfs.spec
 
-DIST_SUBDIRS = plugins pkg tests-autotest
+DIST_SUBDIRS = doc plugins pkg tests-autotest
 SUBDIRS = pkg
 if DO_PLUGINS
 SUBDIRS += plugins

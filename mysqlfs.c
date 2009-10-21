@@ -54,7 +54,7 @@ static int snprint_status(char *, size_t, struct mysqlfs_opt *, long);
 /**
  * copy to the options setting, global variable.  Used for both STATUSDIR (if configured) and osxnospotlight
  *
- * it's a bit of a kludge to set a pointer to a structure in the mainfunc, but it was breaking (<blush>),
+ * it's a bit of a kludge to set a pointer to a structure in the mainfunc, but it was breaking (*blush*),
  * need to clean this up later
  */
 struct mysqlfs_opt *theopts;

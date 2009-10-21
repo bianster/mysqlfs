@@ -173,6 +173,7 @@ CFLAGS="$CFLAGS $CFLAGS_ADD"
 
 AC_OUTPUT(Makefile
 	mysqlfs.spec:pkg/mysqlfs.spec.in Doxyfile:pkg/Doxyfile.in
+	doc/Makefile doc/index.html
 	pkg/Makefile pkg/doc-mainpage.c pkg/statusfile.xsd
 	plugins/Makefile
 	tests-autotest/Makefile tests-autotest/atlocal tests-autotest/testsuite.at
