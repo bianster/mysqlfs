@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <time.h>
+#include <inttypes.h>
 #include <libgen.h>
 #include <fuse/fuse.h>
 #ifdef HAVE_MYSQL_MYSQL_H
@@ -52,12 +53,12 @@ fill_data_blocks_info(struct data_blocks_info *info, size_t size, off_t offset)
     info->seq_first = offset / DATA_BLOCK_SIZE;
     info->offset_first = offset % DATA_BLOCK_SIZE;
 
-    unsigned long  nr_following_blocks = ((info->offset_first + size) / DATA_BLOCK_SIZE);	
+    unsigned long  nr_following_blocks = ((info->offset_first + size) / DATA_BLOCK_SIZE);
     info->length_first = nr_following_blocks > 0 ? DATA_BLOCK_SIZE - info->offset_first : size;
 
     info->seq_last = info->seq_first + nr_following_blocks;
     info->length_last = (info->offset_first + size) % DATA_BLOCK_SIZE;
-    /* offset in last block (if it's a different one from the first block) 
+    /* offset in last block (if it's a different one from the first block)
      * is always 0 */
 
     return info;
@@ -187,7 +188,7 @@ int query_inode_full(MYSQL *mysql, const char *path, char *name, size_t name_len
 	     		   "       (SELECT COUNT(inode) FROM tree AS t%d WHERE t%d.inode=t%d.inode) "
 			   "               AS nlinks "
 	     		   "FROM %s WHERE %s",
-	     depth, depth, depth, 
+	     depth, depth, depth,
 	     depth+1, depth+1, depth,
 	     sql_from, sql_where);
     log_printf(LOG_D_SQL, "sql=%s\n", sql);
@@ -217,7 +218,7 @@ int query_inode_full(MYSQL *mysql, const char *path, char *name, size_t name_len
     }
     log_printf(LOG_D_OTHER, "query_inode(path='%s') => %s, %s, %s, %s\n",
 	       path, row[0], row[1], row[2], row[3]);
-    
+
     if (inode)
         *inode = atol(row[0]);
     if (name)
@@ -245,7 +246,7 @@ int query_inode_full(MYSQL *mysql, const char *path, char *name, size_t name_len
 long query_inode(MYSQL *mysql, const char *path)
 {
     long inode, ret;
-    
+
     ret = query_inode_full(mysql, path, NULL, 0, &inode, NULL, NULL);
     if (ret < 0)
       return ret;
@@ -294,7 +295,7 @@ int query_truncate(MYSQL *mysql, const char *path, off_t length)
     if ((ret = mysql_query(mysql, sql))) goto err_out;
 
     snprintf(sql, SQL_MAX,
-             "UPDATE inodes SET size=%lld WHERE inode=%ld",
+             "UPDATE inodes SET size=%" PRIdMAX " WHERE inode=%ld",
              length, inode);
     log_printf(LOG_D_SQL, "sql=%s\n", sql);
     if ((ret = mysql_query(mysql, sql))) goto err_out;
@@ -407,9 +408,9 @@ long query_mknod(MYSQL *mysql, const char *path, mode_t mode, dev_t rdev,
           goto err_out;
     } else {
         name = strrchr(path, '/');
-        if (!name || *++name == '\0') 
+        if (!name || *++name == '\0')
             return -ENOENT;
-            
+
         mysql_real_escape_string(mysql, esc_name, name, strlen(name));
         snprintf(sql, SQL_MAX,
                  "INSERT INTO tree (name, parent) VALUES ('%s', %ld)",
@@ -560,11 +561,11 @@ int query_chown(MYSQL *mysql, long inode, uid_t uid, gid_t gid)
 
     index = snprintf(sql, SQL_MAX, "UPDATE inodes SET ");
     if (uid != (uid_t)-1)
-    	index += snprintf(sql + index, SQL_MAX - index, 
+    	index += snprintf(sql + index, SQL_MAX - index,
 			  "uid=%d ", uid);
     if (gid != (gid_t)-1)
     	index += snprintf(sql + index, SQL_MAX - index,
-			  "%s gid=%d ", 
+			  "%s gid=%d ",
 			  /* Insert comma if this is a second argument */
 			  (uid != (uid_t)-1) ? "," : "",
 			  gid);
@@ -681,7 +682,7 @@ int query_read(MYSQL *mysql, long inode, const char *buf, size_t size,
 	    data = row[1];
 	    row_len = atoll(row[2]);
 	}
-	    
+
 	if (seq == info.seq_first) {
 	    if (row_len < info.offset_first)
 	        goto go_away;
@@ -747,7 +748,7 @@ static int write_one_block(MYSQL *mysql, long inode,
     if (size == 0) return 0;
 
     if (offset + size > DATA_BLOCK_SIZE) {
-        log_printf(LOG_ERROR, "%s(): offset(%zu)+size(%zu)>max_block(%d)\n", 
+        log_printf(LOG_ERROR, "%s(): offset(%zu)+size(%zu)>max_block(%d)\n",
 		   __func__, offset, size, DATA_BLOCK_SIZE);
 	return -EIO;
     }
@@ -792,11 +793,11 @@ static int write_one_block(MYSQL *mysql, long inode,
         pos = snprintf(sql, sizeof(sql),
 		 "UPDATE data_blocks SET data=CONCAT(");
 	if (offset > 0)
-	    pos += snprintf(sql + pos, sizeof(sql) - pos, "RPAD(IF(ISNULL(data),'', data), %llu, '\\0'),", offset);
+	    pos += snprintf(sql + pos, sizeof(sql) - pos, "RPAD(IF(ISNULL(data),'', data), %" PRIuMAX ", '\\0'),", offset);
 	pos += snprintf(sql + pos, sizeof(sql) - pos, "?,");
 	new_size = offset + size;
 	if (offset + size < current_block_size) {
-	    pos += snprintf(sql + pos, sizeof(sql) - pos, "SUBSTRING(data FROM %llu),", offset + size + 1);
+	    pos += snprintf(sql + pos, sizeof(sql) - pos, "SUBSTRING(data FROM %" PRIuMAX "),", offset + size + 1);
 	    new_size = current_block_size;
 	}
 	sql[--pos] = '\0';	/* Remove the trailing comma. */
@@ -1108,7 +1109,7 @@ int query_rename(MYSQL *mysql, const char *from, const char *to)
  *
  * @return 0 on success; -EIO if the mysql_query() is non-zero (and the error is logged)
  * @param mysql handle to the database
- * @param inode inode of the file that is to be marked deleted 
+ * @param inode inode of the file that is to be marked deleted
  * @param increment how many additional "uses" to increment in the file's inode
  */
 int query_inuse_inc(MYSQL *mysql, long inode, int increment)
@@ -1139,7 +1140,7 @@ int query_inuse_inc(MYSQL *mysql, long inode, int increment)
  *
  * @return 0 on success; -EIO if the mysql_query() is non-zero (and the error is logged)
  * @param mysql handle to the database
- * @param inode inode of the file that is to be marked deleted 
+ * @param inode inode of the file that is to be marked deleted
  */
 int query_purge_deleted(MYSQL *mysql, long inode)
 {
@@ -1278,7 +1279,7 @@ int query_fsck(MYSQL *mysql)
     printf("Stage 5...\n");
     long int inode;
     long int size;
-    
+
     snprintf(sql, SQL_MAX, "select inode, sum(OCTET_LENGTH(data)) as size from data_blocks group by inode");
 
     log_printf(LOG_D_SQL, "sql=%s\n", sql);
@@ -1292,7 +1293,7 @@ int query_fsck(MYSQL *mysql)
     while ((row = mysql_fetch_row(myresult)) != NULL) {
      inode = atol(row[0]);
      size = atol(row[1]);
-                     
+
       snprintf(sql, SQL_MAX, "update inodes set size=%ld where inode=%ld;", size, inode);
       log_printf(LOG_D_SQL, "sql=%s\n", sql);
       result = mysql_query(mysql, sql);
